@@ -1,4 +1,4 @@
-// popup.js
+// popup.js, layout colunas sessões + separadores (lado a lado)
 
 let selectedSessionIdx = null;
 
@@ -10,9 +10,9 @@ function formatDate(dt) {
 
 function renderSessions() {
   const sessionsList = document.getElementById('sessionsList');
-  const sessionTabs = document.getElementById('sessionTabs');
+  const tabsTitleList = document.getElementById('tabsTitleList');
   sessionsList.innerHTML = '';
-  sessionTabs.innerHTML = '';
+  tabsTitleList.innerHTML = '';
   chrome.storage.local.get('sessions', data => {
     const sessions = data.sessions || [];
     if(selectedSessionIdx === null && sessions.length>0) selectedSessionIdx = 0;
@@ -25,7 +25,7 @@ function renderSessions() {
         <div class='sess-info'>
           <div class='sess-main'>${sess.name}</div>
           <div class="sess-date">Última atualização:</div>
-          <div class=\"sess-date\">${formatDate(sess.timestamp)}</div>
+          <div class="sess-date">${formatDate(sess.timestamp)}</div>
           <div class="sess-btns">
             <button data-open="${idx}" title="Restaurar sessão" aria-label="Restaurar sessão">📄</button>
             <button data-update="${idx}" title="Atualizar sessão" aria-label="Atualizar sessão">💾</button>
@@ -42,17 +42,20 @@ function renderSessions() {
       };
       sessionsList.appendChild(li);
     });
-    // Separadores da sessão ativa
+    // Mostra separadores só da sessão ativa
     if(selectedSessionIdx !== null && sessions[selectedSessionIdx]) {
       const sess = sessions[selectedSessionIdx];
-      let titlesBox = '<div class="sess-titles">';
       (sess.tabs||[]).forEach((tab, tabIdx) => {
         let t = tab.title || tab.url || '';
-        if(t.length > 55) t = t.substring(0,55)+"...";
-        titlesBox += `<div class='sess-title-item' data-tabidx='${tabIdx}' data-sessidx='${selectedSessionIdx}' title='${tab.title||tab.url||''}'>${t}</div>`;
+        if(t.length > 120) t = t.substring(0,120)+"...";
+        const ti = document.createElement('div');
+        ti.className = 'sess-title-item';
+        ti.title = tab.title || tab.url || '';
+        ti.textContent = t;
+        ti.dataset.tabidx = tabIdx;
+        ti.dataset.sessidx = selectedSessionIdx;
+        tabsTitleList.appendChild(ti);
       });
-      titlesBox += '</div>';
-      sessionTabs.innerHTML = titlesBox;
     }
   });
 }
@@ -74,7 +77,6 @@ document.getElementById('saveBtn').onclick = async () => {
     });
   });
 };
-// DELEGAÇÃO DE EVENTOS
 
 document.getElementById('sessionsList').onclick = e => {
   if (e.target.tagName === 'BUTTON') {
@@ -84,29 +86,24 @@ document.getElementById('sessionsList').onclick = e => {
         const sessions = data.sessions || [];
         const session = sessions[idx];
         if (!session) return;
-        // Verifica se o windowId ainda existe
         chrome.windows.get(session.windowId, {populate: true}, win => {
           if (chrome.runtime.lastError || !win) {
             // Não existe janela -> abrir nova
             chrome.windows.create({url: session.tabs.map(t=>t.url)}, newWin => {
-              // Atualiza windowId na sessão
               session.windowId = newWin.id;
               chrome.storage.local.set({sessions}, renderSessions);
             });
             return;
           }
-          // Janela existe: comparar separadores
           const winUrls = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome')).map(t=>t.url);
           const sessUrls = session.tabs.map(t=>t.url);
-          const diffExtra = winUrls.filter(u => !sessUrls.includes(u)); // a mais
-          const diffMissing = sessUrls.filter(u => !winUrls.includes(u)); // em falta
+          const diffExtra = winUrls.filter(u => !sessUrls.includes(u));
+          const diffMissing = sessUrls.filter(u => !winUrls.includes(u));
           if(diffExtra.length === 0 && diffMissing.length === 0 && winUrls.length === sessUrls.length){
-            // São iguais: só focar
             chrome.windows.update(win.id, {focused:true});
             if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active:true});
             return;
           }
-          // AVISO: mostrar separadores a fechar
           let msg = '';
           if(diffExtra.length>0){
             msg += 'Os seguintes separadores vão ser FECHADOS nesta janela:\n\n'+diffExtra.join('\n')+'\n\n';
@@ -116,15 +113,12 @@ document.getElementById('sessionsList').onclick = e => {
           }
           msg += 'Queres mesmo restaurar esta sessão nesta janela?';
           if(!confirm(msg)) return;
-          // Fechar separadores extra
           const tabsToClose = win.tabs.filter(t => diffExtra.includes(t.url)).map(t=>t.id);
           if(tabsToClose.length)
             chrome.tabs.remove(tabsToClose);
-          // Abrir em falta
           for(let u of diffMissing){
              chrome.tabs.create({windowId:win.id, url: u});
           }
-          // Focus janela
           chrome.windows.update(win.id, {focused:true});
           if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active:true});
         });
@@ -156,7 +150,7 @@ document.getElementById('sessionsList').onclick = e => {
   }
 };
 
-document.getElementById('sessionTabs').onclick = e => {
+document.getElementById('tabsTitleList').onclick = e => {
   if (e.target.classList.contains('sess-title-item')) {
     const sessidx = Number(e.target.dataset.sessidx);
     const tabidx = Number(e.target.dataset.tabidx);
