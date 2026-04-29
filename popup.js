@@ -8,7 +8,6 @@ function renderSessions() {
     sessions.forEach((sess, idx) => {
       const li = document.createElement('li');
       li.className = 'sessao';
-      // Geração da string títulos
       let titles = '';
       if(sess.tabs && sess.tabs.length){
         titles = '<div style="margin-top:2px;margin-bottom:5px;padding-left:8px;font-size:12px;max-height:52px;overflow-y:auto;background:#f7f7f7;border-left:2px solid #bae;">';
@@ -26,6 +25,7 @@ function renderSessions() {
         <button data-delete="${idx}">Remover</button>
         <small>(${sess.tabs.length} separadores)</small><br>
         ${titles}
+        <span id="warn_${idx}" style="color:#900;font-size:12px;"></span>
       `;
       sessionsList.appendChild(li);
     });
@@ -58,7 +58,26 @@ document.getElementById('sessionsList').onclick = e => {
       chrome.windows.create({url: session.tabs.map(t=>t.url)});
     });
   } else if (e.target.dataset.update) {
-    // A ser implementado nos próximos commits
+    const idx = Number(e.target.dataset.update);
+    chrome.storage.local.get('sessions', data => {
+      const sessions = data.sessions || [];
+      const sess = sessions[idx];
+      if (!sess) return;
+      chrome.windows.getCurrent({populate:true}, win => {
+        // Só permite atualizar se for a mesma janela
+        if (sess.windowId !== win.id) {
+          const warn = document.getElementById('warn_'+idx);
+          if(warn) {
+            warn.textContent = ' Têm de estar na janela original para atualizar.';
+            setTimeout(()=>warn.textContent='', 4000);
+          } else {
+            alert('Têm de estar na janela original para atualizar.');
+          }
+          return;
+        }
+        // Para já não faz update, só passa validação
+      });
+    });
   } else if (e.target.dataset.delete) {
     const idx = Number(e.target.dataset.delete);
     chrome.storage.local.get('sessions', data => {
