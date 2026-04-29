@@ -307,8 +307,9 @@ document.getElementById('tabsTitleList').onclick = e => {
     handleRemoveTab(Number(e.target.dataset.sessidx), Number(e.target.dataset.tabidx));
     return;
   }
-  if (!e.target.classList.contains('sess-title-item')) return;
-  handleTabClick(Number(e.target.dataset.sessidx), Number(e.target.dataset.tabidx));
+  const item = e.target.closest('.sess-title-item');
+  if (!item) return;
+  handleTabClick(Number(item.dataset.sessidx), Number(item.dataset.tabidx));
 };
 
 document.addEventListener('DOMContentLoaded', renderSessions);
