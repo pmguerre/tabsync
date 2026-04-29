@@ -2,6 +2,13 @@
 
 let selectedSessionIdx = null;
 
+function formatDate(dt) {
+  const d = new Date(dt);
+  let zero = n => n.toString().padStart(2, '0');
+  // formato DD/MM/YYYY HH:MM
+  return zero(d.getDate()) + '/' + zero(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + zero(d.getHours()) + ':' + zero(d.getMinutes());
+}
+
 function renderSessions() {
   const sessionsList = document.getElementById('sessionsList');
   const sessionTabs = document.getElementById('sessionTabs');
@@ -9,7 +16,6 @@ function renderSessions() {
   sessionTabs.innerHTML = '';
   chrome.storage.local.get('sessions', data => {
     const sessions = data.sessions || [];
-    // Seleciona sempre uma sessão válida
     if(selectedSessionIdx === null && sessions.length>0) selectedSessionIdx = 0;
     if(selectedSessionIdx !== null && selectedSessionIdx >= sessions.length) selectedSessionIdx = sessions.length-1;
     sessions.forEach((sess, idx) => {
@@ -19,6 +25,8 @@ function renderSessions() {
       li.innerHTML = `
         <div class='sess-info'>
           <div class='sess-main'>${sess.name}</div>
+          <div class="sess-date">Última atualização:</div>
+          <div class=\"sess-date\">${formatDate(sess.timestamp)}</div>
           <div class="sess-btns">
             <button data-open="${idx}" title="Restaurar sessão" aria-label="Restaurar sessão">📄</button>
             <button data-update="${idx}" title="Atualizar sessão" aria-label="Atualizar sessão">💾</button>
@@ -84,7 +92,6 @@ document.getElementById('sessionsList').onclick = e => {
       if (!sess) return;
       chrome.windows.getCurrent({populate:true}, win => {
         if (sess.windowId !== win.id) {
-          // aviso igual
           return;
         }
         const tabsNow = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'));
