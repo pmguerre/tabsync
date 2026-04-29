@@ -21,14 +21,15 @@ function renderSessions() {
       li.innerHTML = `
         <div class='sess-info'>
           <div class='sess-main'>${sess.name}</div>
-          <div class="sess-date">Última atualização:</div>
-          <div class="sess-date">${formatDate(sess.timestamp)}</div>
-          <div class="sess-btns">
-            <button data-open="${idx}" title="Abrir/restaurar sessão" aria-label="Abrir/restaurar sessão">📂</button>
-            <button data-update="${idx}" title="Atualizar sessão" aria-label="Atualizar sessão">💾</button>
-            <button data-delete="${idx}" title="Remover sessão" aria-label="Remover sessão">🗑️</button>
+          <div class="sess-date">Última atualização: ${formatDate(sess.timestamp)}</div>
+          <div class="sess-footer">
+            <small>${sess.tabs.length} separadores</small>
+            <div class="sess-btns">
+              <button data-open="${idx}" title="Abrir/restaurar sessão" aria-label="Abrir/restaurar sessão">📂</button>
+              <button data-update="${idx}" title="Atualizar sessão" aria-label="Atualizar sessão">💾</button>
+              <button data-delete="${idx}" title="Remover sessão" aria-label="Remover sessão">🗑️</button>
+            </div>
           </div>
-          <small>${sess.tabs.length} separadores</small>
         </div>
       `;
       li.onclick = (ev) => {
