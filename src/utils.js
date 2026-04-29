@@ -24,7 +24,19 @@ function diffUrls(current, expected) {
   return { extra, missing };
 }
 
+/**
+ * Trunca texto para um máximo de caracteres, acrescentando ... se necessário.
+ * @param {string} text 
+ * @param {number} max 
+ * @returns {string}
+ */
+function truncate(text, max = 120) {
+  if (typeof text !== 'string') return '';
+  return text.length > max ? text.substring(0, max) + '...' : text;
+}
+
 module.exports = {
   formatDate,
   diffUrls,
+  truncate,
 };

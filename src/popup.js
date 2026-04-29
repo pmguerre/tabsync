@@ -2,7 +2,7 @@
 
 let selectedSessionIdx = null;
 
-import { formatDate } from './utils.js';
+import { formatDate, truncate } from './utils.js';
 
 function renderSessions() {
   const sessionsList = document.getElementById('sessionsList');
@@ -42,8 +42,7 @@ function renderSessions() {
     if(selectedSessionIdx !== null && sessions[selectedSessionIdx]) {
       const sess = sessions[selectedSessionIdx];
       (sess.tabs||[]).forEach((tab, tabIdx) => {
-        let t = tab.title || tab.url || '';
-        if(t.length > 120) t = t.substring(0,120)+"...";
+        let t = truncate(tab.title || tab.url || '', 120);
         const ti = document.createElement('div');
         ti.className = 'sess-title-item';
         ti.title = tab.title || tab.url || '';
