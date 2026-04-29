@@ -45,25 +45,25 @@ function renderSessions() {
         ti.dataset.tabidx = tabIdx;
         ti.dataset.sessidx = selectedSessionIdx;
 
+        const faviconWrap = document.createElement('div');
+        faviconWrap.className = 'favicon-wrap';
+
         const favicon = document.createElement('img');
         favicon.className = 'tab-favicon';
         favicon.src = `https://www.google.com/s2/favicons?sz=16&domain_url=${encodeURIComponent(tab.url)}`;
         favicon.onerror = () => { favicon.style.visibility = 'hidden'; };
 
-        const info = document.createElement('div');
-        info.className = 'tab-info';
+        const removeBtn = document.createElement('span');
+        removeBtn.className = 'tab-remove';
+        removeBtn.textContent = '✕';
+        removeBtn.dataset.tabidx = tabIdx;
+        removeBtn.dataset.sessidx = selectedSessionIdx;
 
-        const title = document.createElement('div');
-        title.className = 'tab-title';
-        title.textContent = truncate(tab.title || 'Sem título', 80);
-
-        const url = document.createElement('div');
-        url.className = 'tab-url';
-        url.textContent = truncate(tab.url || '', 80);
-
+        faviconWrap.appendChild(favicon);
+        faviconWrap.appendChild(removeBtn);
         info.appendChild(title);
         info.appendChild(url);
-        ti.appendChild(favicon);
+        ti.appendChild(faviconWrap);
         ti.appendChild(info);
         tabsTitleList.appendChild(ti);
       });
@@ -151,6 +151,13 @@ function handleDelete(idx) {
   });
 }
 
+function handleRemoveTab(sessidx, tabidx) {
+  chrome.storage.sync.get('sessions', data => {
+    const sessions = removeSessionTab(data.sessions || [], sessidx, tabidx);
+    chrome.storage.sync.set({sessions}, renderSessions);
+  });
+}
+
 function handleTabClick(sessidx, tabidx) {
   chrome.storage.sync.get('sessions', data => {
     const session = (data.sessions||[])[sessidx];
@@ -177,6 +184,11 @@ document.getElementById('sessionsList').onclick = e => {
 };
 
 document.getElementById('tabsTitleList').onclick = e => {
+  if (e.target.classList.contains('tab-remove')) {
+    e.stopPropagation();
+    handleRemoveTab(Number(e.target.dataset.sessidx), Number(e.target.dataset.tabidx));
+    return;
+  }
   if (!e.target.classList.contains('sess-title-item')) return;
   handleTabClick(Number(e.target.dataset.sessidx), Number(e.target.dataset.tabidx));
 };

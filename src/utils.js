@@ -66,6 +66,20 @@ function tabLabel(tab) {
   return tab.title || tab.url || '';
 }
 
+/**
+ * Remove um separador de uma sessão pelo índice.
+ * @param {Array} sessions
+ * @param {number} sessIdx
+ * @param {number} tabIdx
+ * @returns {Array}
+ */
+function removeSessionTab(sessions, sessIdx, tabIdx) {
+  return sessions.map((s, i) => {
+    if (i !== sessIdx) return s;
+    return { ...s, tabs: s.tabs.filter((_, ti) => ti !== tabIdx) };
+  });
+}
+
 /* istanbul ignore next */
 if (typeof module !== 'undefined') module.exports = {
   formatDate,
@@ -75,4 +89,5 @@ if (typeof module !== 'undefined') module.exports = {
   buildRestoreDiffMessage,
   clampIndex,
   tabLabel,
+  removeSessionTab,
 };
