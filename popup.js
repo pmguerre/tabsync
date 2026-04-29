@@ -13,7 +13,7 @@ function renderSessions() {
   const tabsTitleList = document.getElementById('tabsTitleList');
   sessionsList.innerHTML = '';
   tabsTitleList.innerHTML = '';
-  chrome.storage.local.get('sessions', data => {
+  chrome.storage.sync.get('sessions', data => {
     const sessions = data.sessions || [];
     if(selectedSessionIdx === null && sessions.length>0) selectedSessionIdx = 0;
     if(selectedSessionIdx !== null && selectedSessionIdx >= sessions.length) selectedSessionIdx = sessions.length-1;
@@ -69,11 +69,11 @@ document.getElementById('saveBtn').onclick = async () => {
   chrome.windows.getCurrent({populate: true}, win => {
     const tabs = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'))
       .map(t => ({url: t.url, title: t.title||''}));
-    chrome.storage.local.get('sessions', data => {
+    chrome.storage.sync.get('sessions', data => {
       const sessions = data.sessions || [];
       sessions.push({ name, windowId: win.id, tabs, timestamp: Date.now() });
       selectedSessionIdx = sessions.length - 1;
-      chrome.storage.local.set({sessions}, renderSessions);
+      chrome.storage.sync.set({sessions}, renderSessions);
     });
   });
 };
@@ -82,7 +82,7 @@ document.getElementById('sessionsList').onclick = e => {
   if (e.target.tagName === 'BUTTON') {
     if (e.target.dataset.open) {
       const idx = Number(e.target.dataset.open);
-      chrome.storage.local.get('sessions', data => {
+      chrome.storage.sync.get('sessions', data => {
         const sessions = data.sessions || [];
         const session = sessions[idx];
         if (!session) return;
@@ -91,7 +91,7 @@ document.getElementById('sessionsList').onclick = e => {
             // Não existe janela -> abrir nova
             chrome.windows.create({url: session.tabs.map(t=>t.url)}, newWin => {
               session.windowId = newWin.id;
-              chrome.storage.local.set({sessions}, renderSessions);
+              chrome.storage.sync.set({sessions}, renderSessions);
             });
             return;
           }
@@ -125,7 +125,7 @@ document.getElementById('sessionsList').onclick = e => {
       });
     } else if (e.target.dataset.update) {
       const idx = Number(e.target.dataset.update);
-      chrome.storage.local.get('sessions', data => {
+      chrome.storage.sync.get('sessions', data => {
         const sessions = data.sessions || [];
         const sess = sessions[idx];
         if (!sess) return;
@@ -143,15 +143,15 @@ document.getElementById('sessionsList').onclick = e => {
           const tabsNow = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'));
           sess.tabs = tabsNow.map(t=>({url:t.url, title:t.title||''}));
           sess.timestamp = Date.now();
-          chrome.storage.local.set({sessions}, renderSessions);
+          chrome.storage.sync.set({sessions}, renderSessions);
         });
       });
     } else if (e.target.dataset.delete) {
       const idx = Number(e.target.dataset.delete);
-      chrome.storage.local.get('sessions', data => {
+      chrome.storage.sync.get('sessions', data => {
         let sessions = data.sessions || [];
         sessions.splice(idx, 1);
-        chrome.storage.local.set({sessions}, renderSessions);
+        chrome.storage.sync.set({sessions}, renderSessions);
       });
     }
   }
@@ -161,7 +161,7 @@ document.getElementById('tabsTitleList').onclick = e => {
   if (e.target.classList.contains('sess-title-item')) {
     const sessidx = Number(e.target.dataset.sessidx);
     const tabidx = Number(e.target.dataset.tabidx);
-    chrome.storage.local.get('sessions', data => {
+    chrome.storage.sync.get('sessions', data => {
       const session = (data.sessions||[])[sessidx];
       if (!session) return;
       chrome.windows.getCurrent({populate:true}, win => {
