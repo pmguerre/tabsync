@@ -4,6 +4,7 @@
   "description": "Extensão Chrome/Edge para sincronização e gestão de sessões de separadores.",
   "scripts": {
     "build": "rm -rf dist && mkdir dist && cp -r src/* dist/",
+    "pack": "npm run build && powershell -ExecutionPolicy Bypass -Command \"Remove-Item -Force tabsync.zip -ErrorAction SilentlyContinue; Compress-Archive -Path dist/* -DestinationPath tabsync.zip\"",
     "test": "npx jest --coverage"
   },
   "author": "Pedro Guerreiro",
