@@ -83,6 +83,19 @@ function renderSessions() {
   });
 }
 
+function fetchTabGroupsMap(filteredTabs) {
+  const groupIds = [...new Set(filteredTabs.map(t => t.groupId).filter(id => id !== -1))];
+  if (!groupIds.length || !chrome.tabGroups) return Promise.resolve({});
+  return Promise.all(
+    groupIds.map(id => new Promise(resolve => {
+      chrome.tabGroups.get(id, g => {
+        void chrome.runtime.lastError;
+        resolve([id, g || {}]);
+      });
+    }))
+  ).then(Object.fromEntries);
+}
+
 function handleSave() {
   const name = document.getElementById('sessionName').value.trim();
   if (!name) {
@@ -91,12 +104,7 @@ function handleSave() {
   }
   chrome.windows.getCurrent({populate: true}, win => {
     const filteredTabs = extractSessionTabs(win.tabs);
-    const groupIds = [...new Set(filteredTabs.map(t => t.groupId).filter(id => id !== -1))];
-    const fetchGroups = groupIds.map(id =>
-      new Promise(resolve => chrome.tabGroups.get(id, g => resolve([id, g || {}])))
-    );
-    Promise.all(fetchGroups).then(entries => {
-      const tabGroupsMap = Object.fromEntries(entries);
+    fetchTabGroupsMap(filteredTabs).then(tabGroupsMap => {
       chrome.storage.sync.get('sessions', data => {
         const sessions = data.sessions || [];
         const session = buildSessionData(name, win.id, filteredTabs, tabGroupsMap, Date.now());
@@ -187,12 +195,7 @@ function handleUpdate(idx) {
         return;
       }
       const filteredTabs = extractSessionTabs(win.tabs);
-      const groupIds = [...new Set(filteredTabs.map(t => t.groupId).filter(id => id !== -1))];
-      const fetchGroups = groupIds.map(id =>
-        new Promise(resolve => chrome.tabGroups.get(id, g => resolve([id, g || {}])))
-      );
-      Promise.all(fetchGroups).then(entries => {
-        const tabGroupsMap = Object.fromEntries(entries);
+      fetchTabGroupsMap(filteredTabs).then(tabGroupsMap => {
         sessions[idx] = buildSessionData(sess.name, win.id, filteredTabs, tabGroupsMap, Date.now());
         chrome.storage.sync.set({sessions}, renderSessions);
       });
