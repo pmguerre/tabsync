@@ -40,11 +40,10 @@ function renderSessions() {
     if(selectedSessionIdx !== null && sessions[selectedSessionIdx]) {
       const sess = sessions[selectedSessionIdx];
       (sess.tabs||[]).forEach((tab, tabIdx) => {
-        let t = truncate(tab.title || tab.url || '', 120);
         const ti = document.createElement('div');
         ti.className = 'sess-title-item';
         ti.title = tab.title || tab.url || '';
-        ti.textContent = t;
+        ti.textContent = truncate(tab.title || tab.url || '', 120);
         ti.dataset.tabidx = tabIdx;
         ti.dataset.sessidx = selectedSessionIdx;
         tabsTitleList.appendChild(ti);
@@ -53,15 +52,14 @@ function renderSessions() {
   });
 }
 
-document.getElementById('saveBtn').onclick = async () => {
+function handleSave() {
   const name = document.getElementById('sessionName').value.trim();
   if (!name) {
     alert('Dá um nome à sessão!');
     return;
   }
   chrome.windows.getCurrent({populate: true}, win => {
-    const tabs = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'))
-      .map(t => ({url: t.url, title: t.title||''}));
+    const tabs = extractSessionTabs(win.tabs);
     chrome.storage.sync.get('sessions', data => {
       const sessions = data.sessions || [];
       sessions.push({ name, windowId: win.id, tabs, timestamp: Date.now() });
@@ -69,97 +67,99 @@ document.getElementById('saveBtn').onclick = async () => {
       chrome.storage.sync.set({sessions}, renderSessions);
     });
   });
-};
+}
 
-document.getElementById('sessionsList').onclick = e => {
-  if (e.target.tagName === 'BUTTON') {
-    if (e.target.dataset.open) {
-      const idx = Number(e.target.dataset.open);
-      chrome.storage.sync.get('sessions', data => {
-        const sessions = data.sessions || [];
-        const session = sessions[idx];
-        if (!session) return;
-        chrome.windows.get(session.windowId, {populate: true}, win => {
-          if (chrome.runtime.lastError || !win) {
-            // Não existe janela -> abrir nova
-            chrome.windows.create({url: session.tabs.map(t=>t.url)}, newWin => {
-              session.windowId = newWin.id;
-              chrome.storage.sync.set({sessions}, renderSessions);
-            });
-            return;
-          }
-          const winUrls = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome')).map(t=>t.url);
-          const sessUrls = session.tabs.map(t=>t.url);
-          const diffExtra = winUrls.filter(u => !sessUrls.includes(u));
-          const diffMissing = sessUrls.filter(u => !winUrls.includes(u));
-          if(diffExtra.length === 0 && diffMissing.length === 0 && winUrls.length === sessUrls.length){
-            chrome.windows.update(win.id, {focused:true});
-            if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active:true});
-            return;
-          }
-          const msg = buildRestoreDiffMessage(diffExtra, diffMissing);
-          if(!confirm(msg)) return;
-          const tabsToClose = win.tabs.filter(t => diffExtra.includes(t.url)).map(t=>t.id);
-          if(tabsToClose.length)
-            chrome.tabs.remove(tabsToClose);
-          for(let u of diffMissing){
-             chrome.tabs.create({windowId:win.id, url: u});
-          }
-          chrome.windows.update(win.id, {focused:true});
-          if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active:true});
-        });
-      });
-    } else if (e.target.dataset.update) {
-      const idx = Number(e.target.dataset.update);
-      chrome.storage.sync.get('sessions', data => {
-        const sessions = data.sessions || [];
-        const sess = sessions[idx];
-        if (!sess) return;
-        chrome.windows.getCurrent({populate:true}, win => {
-          if (sess.windowId !== win.id) {
-            const warn = document.getElementById('warn_'+idx);
-            if(warn) {
-              warn.textContent = ' Têm de estar na janela original para atualizar.';
-              setTimeout(()=>warn.textContent='', 4000);
-            } else {
-              alert('Têm de estar na janela original para atualizar.');
-            }
-            return;
-          }
-          const tabsNow = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'));
-          sess.tabs = tabsNow.map(t=>({url:t.url, title:t.title||''}));
-          sess.timestamp = Date.now();
+function handleOpen(idx) {
+  chrome.storage.sync.get('sessions', data => {
+    const sessions = data.sessions || [];
+    const session = sessions[idx];
+    if (!session) return;
+    chrome.windows.get(session.windowId, {populate: true}, win => {
+      if (chrome.runtime.lastError || !win) {
+        chrome.windows.create({url: session.tabs.map(t => t.url)}, newWin => {
+          session.windowId = newWin.id;
           chrome.storage.sync.set({sessions}, renderSessions);
         });
+        return;
+      }
+      const winUrls = extractSessionTabs(win.tabs).map(t => t.url);
+      const sessUrls = session.tabs.map(t => t.url);
+      const { extra, missing } = diffUrls(winUrls, sessUrls);
+      if (extra.length === 0 && missing.length === 0 && winUrls.length === sessUrls.length) {
+        chrome.windows.update(win.id, {focused: true});
+        if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active: true});
+        return;
+      }
+      const msg = buildRestoreDiffMessage(extra, missing);
+      if (!confirm(msg)) return;
+      const tabsToClose = win.tabs.filter(t => extra.includes(t.url)).map(t => t.id);
+      if (tabsToClose.length) chrome.tabs.remove(tabsToClose);
+      for (let u of missing) chrome.tabs.create({windowId: win.id, url: u});
+      chrome.windows.update(win.id, {focused: true});
+      if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active: true});
+    });
+  });
+}
+
+function handleUpdate(idx) {
+  chrome.storage.sync.get('sessions', data => {
+    const sessions = data.sessions || [];
+    const sess = sessions[idx];
+    if (!sess) return;
+    chrome.windows.getCurrent({populate: true}, win => {
+      if (sess.windowId !== win.id) {
+        const warn = document.getElementById('warn_'+idx);
+        if (warn) {
+          warn.textContent = ' Têm de estar na janela original para atualizar.';
+          setTimeout(() => warn.textContent = '', 4000);
+        } else {
+          alert('Têm de estar na janela original para atualizar.');
+        }
+        return;
+      }
+      sess.tabs = extractSessionTabs(win.tabs);
+      sess.timestamp = Date.now();
+      chrome.storage.sync.set({sessions}, renderSessions);
+    });
+  });
+}
+
+function handleDelete(idx) {
+  chrome.storage.sync.get('sessions', data => {
+    let sessions = data.sessions || [];
+    sessions.splice(idx, 1);
+    chrome.storage.sync.set({sessions}, renderSessions);
+  });
+}
+
+function handleTabClick(sessidx, tabidx) {
+  chrome.storage.sync.get('sessions', data => {
+    const session = (data.sessions||[])[sessidx];
+    if (!session) return;
+    chrome.windows.getCurrent({populate: true}, win => {
+      if (win.id !== session.windowId) return;
+      const match = win.tabs.find(t => t.url === (session.tabs[tabidx]?.url));
+      if (!match) return;
+      chrome.tabs.update(match.id, {active: true}, () => {
+        chrome.windows.update(win.id, {focused: true});
       });
-    } else if (e.target.dataset.delete) {
-      const idx = Number(e.target.dataset.delete);
-      chrome.storage.sync.get('sessions', data => {
-        let sessions = data.sessions || [];
-        sessions.splice(idx, 1);
-        chrome.storage.sync.set({sessions}, renderSessions);
-      });
-    }
-  }
+    });
+  });
+}
+
+document.getElementById('saveBtn').onclick = handleSave;
+
+document.getElementById('sessionsList').onclick = e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  const idx = Number(e.target.dataset.open ?? e.target.dataset.update ?? e.target.dataset.delete);
+  if (e.target.dataset.open !== undefined) handleOpen(idx);
+  else if (e.target.dataset.update !== undefined) handleUpdate(idx);
+  else if (e.target.dataset.delete !== undefined) handleDelete(idx);
 };
 
 document.getElementById('tabsTitleList').onclick = e => {
-  if (e.target.classList.contains('sess-title-item')) {
-    const sessidx = Number(e.target.dataset.sessidx);
-    const tabidx = Number(e.target.dataset.tabidx);
-    chrome.storage.sync.get('sessions', data => {
-      const session = (data.sessions||[])[sessidx];
-      if (!session) return;
-      chrome.windows.getCurrent({populate:true}, win => {
-        if (win.id !== session.windowId) return;
-        const match = win.tabs.find(t => t.url === (session.tabs[tabidx]?.url));
-        if (!match) return;
-        chrome.tabs.update(match.id, {active:true}, ()=>{
-          chrome.windows.update(win.id, {focused:true});
-        });
-      });
-    });
-  }
+  if (!e.target.classList.contains('sess-title-item')) return;
+  handleTabClick(Number(e.target.dataset.sessidx), Number(e.target.dataset.tabidx));
 };
 
 document.addEventListener('DOMContentLoaded', renderSessions);
