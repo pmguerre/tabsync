@@ -8,12 +8,24 @@ function renderSessions() {
     sessions.forEach((sess, idx) => {
       const li = document.createElement('li');
       li.className = 'sessao';
+      // Geração da string títulos
+      let titles = '';
+      if(sess.tabs && sess.tabs.length){
+        titles = '<div style="margin-top:2px;margin-bottom:5px;padding-left:8px;font-size:12px;max-height:52px;overflow-y:auto;background:#f7f7f7;border-left:2px solid #bae;">';
+        sess.tabs.forEach(tab => {
+          let t = tab.title || tab.url || '';
+          if(t.length > 45) t = t.substring(0,45)+"...";
+          titles += `<div title="${tab.title||tab.url||''}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t}</div>`;
+        });
+        titles += '</div>';
+      }
       li.innerHTML = `
         <b>${sess.name}</b> <br>
         <button data-open="${idx}">Restaurar</button>
         <button data-update="${idx}">Atualizar</button>
         <button data-delete="${idx}">Remover</button>
-        <small>(${sess.tabs.length} separadores)</small>
+        <small>(${sess.tabs.length} separadores)</small><br>
+        ${titles}
       `;
       sessionsList.appendChild(li);
     });
