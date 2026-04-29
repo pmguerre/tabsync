@@ -1,4 +1,4 @@
-// popup.js, layout colunas sessões + separadores (lado a lado)
+// popup.js - tab sessions layout (sessions + tabs side by side)
 
 let selectedSessionIdx = null;
 
@@ -22,14 +22,14 @@ function renderSessions() {
         <div class='sess-info'>
           <div class='sess-main'>${sess.name}</div>
           <div class="sess-footer">
-            <small>${sess.tabs.length} separadores</small>
+            <small>${sess.tabs.length} tabs</small>
             <div class="sess-btns">
-              <button data-open="${idx}" title="Abrir/restaurar sessão" aria-label="Abrir/restaurar sessão">📂</button>
-              <button data-update="${idx}" title="Atualizar sessão" aria-label="Atualizar sessão">💾</button>
-              <button data-delete="${idx}" title="Remover sessão" aria-label="Remover sessão">🗑️</button>
+              <button data-open="${idx}" title="Open/restore session" aria-label="Open/restore session">📂</button>
+              <button data-update="${idx}" title="Update session" aria-label="Update session">💾</button>
+              <button data-delete="${idx}" title="Remove session" aria-label="Remove session">🗑️</button>
             </div>
           </div>
-          <div class="sess-date">Atualizado em: ${formatDate(sess.timestamp)}</div>
+          <div class="sess-date">Updated: ${formatDate(sess.timestamp)}</div>
         </div>
       `;
       li.onclick = (ev) => {
@@ -40,7 +40,7 @@ function renderSessions() {
       };
       sessionsList.appendChild(li);
     });
-    // Mostra separadores só da sessão ativa
+    // Show tabs for the active session only
     if(selectedSessionIdx !== null && sessions[selectedSessionIdx]) {
       const sess = sessions[selectedSessionIdx];
       const segments = groupTabsIntoSegments(sess.tabs || [], sess.groups || []);
@@ -68,7 +68,7 @@ function renderSessions() {
         info.className = 'tab-info';
         const titleEl = document.createElement('div');
         titleEl.className = 'tab-title';
-        titleEl.textContent = truncate(tab.title || 'Sem título', 80);
+        titleEl.textContent = truncate(tab.title || 'Untitled', 80);
         const urlEl = document.createElement('div');
         urlEl.className = 'tab-url';
         urlEl.textContent = truncate(tab.url || '', 80);
@@ -93,7 +93,7 @@ function renderSessions() {
           dot.className = 'group-header-dot';
           dot.style.background = color;
           header.appendChild(dot);
-          header.appendChild(document.createTextNode(segment.group.title || 'Grupo sem nome'));
+          header.appendChild(document.createTextNode(segment.group.title || 'Unnamed group'));
           container.appendChild(header);
           segment.tabs.forEach(({tab, tabIdx}) => {
             const tabEl = renderTabEl(tab, tabIdx);
@@ -123,7 +123,7 @@ function fetchTabGroupsMap(filteredTabs) {
 function handleSave() {
   const name = document.getElementById('sessionName').value.trim();
   if (!name) {
-    alert('Dá um nome à sessão!');
+    alert('Please enter a session name.');
     return;
   }
   chrome.windows.getCurrent({populate: true}, win => {
@@ -205,7 +205,7 @@ function handleOpen(idx) {
       // Remove extra tabs
       const tabsToClose = win.tabs.filter(t => extra.includes(t.url)).map(t => t.id);
       if (tabsToClose.length) chrome.tabs.remove(tabsToClose);
-      // Constrói URL→ID para tabs já existentes (exceto as que vão ser removidas)
+      // Build URL→ID map for existing tabs (except those being removed)
       const urlToId = {};
       win.tabs
         .filter(t => !t.pinned && t.url && !t.url.startsWith('chrome') && !extra.includes(t.url))
@@ -221,7 +221,7 @@ function handleOpen(idx) {
       Promise.all(createPromises).then(() => {
         // orderedTabIds[i] = ID do tab para session.tabs[i]
         const orderedTabIds = session.tabs.map(t => urlToId[t.url]).filter(Boolean);
-        // Move tabs para posição correta (a seguir aos pinned)
+        // Move tabs to correct position (after pinned tabs)
         chrome.windows.get(win.id, {populate: true}, currentWin => {
           const pinnedCount = currentWin.tabs.filter(t => t.pinned).length;
           const movePromises = orderedTabIds.map((id, i) =>
@@ -245,10 +245,10 @@ function handleUpdate(idx) {
       if (sess.windowId !== win.id) {
         const warn = document.getElementById('warn_'+idx);
         if (warn) {
-          warn.textContent = ' Têm de estar na janela original para atualizar.';
+          warn.textContent = 'You must be in the original window to update this session.';
           setTimeout(() => warn.textContent = '', 4000);
         } else {
-          alert('Têm de estar na janela original para atualizar.');
+          alert('You must be in the original window to update this session.');
         }
         return;
       }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabSync",
-  "description": "Sincroniza e guarda sessões de separadores por janela.",
+  "description": "Sync and save tab sessions per window across devices.",
   "version": "1.6",
   "action": {
     "default_popup": "popup.html",

@@ -23,7 +23,7 @@ body.no-sessions {
   height: auto;
 }
 
-/* ── Título ───────────────────────────────────────────── */
+/* ── Title ───────────────────────────────────────────── */
 h3 {
   margin: 0 0 10px 0;
   font-size: 15px;
@@ -33,7 +33,7 @@ h3 {
   text-transform: uppercase;
 }
 
-/* ── Top bar (input + botão) ──────────────────────────── */
+/* ── Top bar (input + button) ──────────────────────────── */
 .top-bar {
   display: flex;
   align-items: center;
@@ -98,7 +98,7 @@ hr#mainhr {
   gap: 12px;
 }
 
-/* ── Coluna sessões ───────────────────────────────────── */
+/* ── Sessions column ───────────────────────────────────── */
 .sessions-col {
   min-width: 220px;
   max-width: 250px;
@@ -118,7 +118,7 @@ hr#mainhr {
   gap: 6px;
 }
 
-/* ── Card de sessão ───────────────────────────────────── */
+/* ── Session card ───────────────────────────────────── */
 .sessao {
   background: #fff;
   border: 1.5px solid #e2e8f0;
@@ -188,7 +188,7 @@ hr#mainhr {
 .sess-btns button:hover   { background: #f1f5f9; }
 .sess-btns button:focus   { outline: none; box-shadow: 0 0 0 2px #93c5fd; }
 
-/* ── Coluna separadores ───────────────────────────────── */
+/* ── Tabs column ───────────────────────────────── */
 .tabs-col {
   flex: 1;
   display: flex;
@@ -330,7 +330,7 @@ hr#mainhr {
 ::-webkit-scrollbar-thumb         { background: #cbd5e1; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover   { background: #94a3b8; }
 
-/* ── Utilitários ──────────────────────────────────────── */
+/* ── Utilities ──────────────────────────────────────── */
 .hidden { display: none !important; }
 
 .warn {

@@ -30,7 +30,7 @@ function extractSessionTabs(tabs) {
 }
 
 /**
- * Gera a mensagem a mostrar na dialog de restauro, a partir das diferenças extra/missing
+ * Builds the restore confirmation message from extra/missing URL lists
  * @param {string[]} extra
  * @param {string[]} missing
  * @returns {string}
@@ -38,15 +38,15 @@ function extractSessionTabs(tabs) {
 function buildRestoreDiffMessage(extra, missing) {
   let msg = '';
   if(extra.length > 0)
-    msg += 'Os seguintes separadores vão ser FECHADOS nesta janela:\n\n'+extra.join('\n')+'\n\n';
+    msg += 'The following tabs will be CLOSED in this window:\n\n'+extra.join('\n')+'\n\n';
   if(missing.length > 0)
-    msg += 'Os seguintes separadores vão ser ABERTOS (faltam nesta janela):\n\n'+missing.join('\n')+'\n\n';
-  msg += 'Queres mesmo restaurar esta sessão nesta janela?';
+    msg += 'The following tabs will be OPENED (missing from this window):\n\n'+missing.join('\n')+'\n\n';
+  msg += 'Do you want to restore this session in this window?';
   return msg;
 }
 
 /**
- * Ajusta o índice de sessão selecionado para os limites válidos do array.
+ * Clamps the selected session index to valid array bounds.
  * @param {number|null} idx
  * @param {number} length
  * @returns {number|null}
@@ -58,7 +58,7 @@ function clampIndex(idx, length) {
 }
 
 /**
- * Devolve o label legível de um separador (título ou url ou string vazia).
+ * Returns the readable label for a tab (title, url, or empty string).
  * @param {{title?:string, url?:string}} tab
  * @returns {string}
  */
@@ -67,7 +67,7 @@ function tabLabel(tab) {
 }
 
 /**
- * Remove um separador de uma sessão pelo índice.
+ * Removes a tab from a session by index.
  * @param {Array} sessions
  * @param {number} sessIdx
  * @param {number} tabIdx
@@ -81,7 +81,7 @@ function removeSessionTab(sessions, sessIdx, tabIdx) {
 }
 
 /**
- * Calcula as operações de mover separadores para corresponder à ordem da sessão.
+ * Calculates tab move operations to match the session order.
  * @param {string[]} sessionUrls - URLs na ordem desejada
  * @param {Array<{id:number, url:string}>} windowTabs - separadores atuais da janela
  * @returns {Array<{id:number, index:number}>}
@@ -95,13 +95,13 @@ function buildTabMoveOrder(sessionUrls, windowTabs) {
 }
 
 /**
- * Constrói o objeto de sessão com grupos a partir dos tabs filtrados e info de grupos.
+ * Builds the session object with group info from filtered tabs.
  * @param {string} name
  * @param {number} winId
  * @param {Array<{url,title,groupId}>} filteredTabs - output de extractSessionTabs
  * @param {Object} tabGroupsMap - {groupId: {title, color, collapsed}}
  * @param {number} timestamp
- * @returns {Object} sessão
+ * @returns {Object} session
  */
 function buildSessionData(name, winId, filteredTabs, tabGroupsMap, timestamp) {
   const groupIdxMap = {};
@@ -122,7 +122,7 @@ function buildSessionData(name, winId, filteredTabs, tabGroupsMap, timestamp) {
 }
 
 /**
- * Calcula operações de agrupamento para restaurar grupos de uma sessão.
+ * Calculates grouping operations to restore session tab groups.
  * @param {Array<{title,color,collapsed}>} sessionGroups
  * @param {Array<{url,groupIdx}>} sessionTabs
  * @param {Array<{id,url}>} windowTabs
