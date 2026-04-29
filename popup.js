@@ -131,6 +131,13 @@ document.getElementById('sessionsList').onclick = e => {
         if (!sess) return;
         chrome.windows.getCurrent({populate:true}, win => {
           if (sess.windowId !== win.id) {
+            const warn = document.getElementById('warn_'+idx);
+            if(warn) {
+              warn.textContent = ' Têm de estar na janela original para atualizar.';
+              setTimeout(()=>warn.textContent='', 4000);
+            } else {
+              alert('Têm de estar na janela original para atualizar.');
+            }
             return;
           }
           const tabsNow = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'));
