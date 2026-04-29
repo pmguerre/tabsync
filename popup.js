@@ -9,13 +9,15 @@ function renderSessions() {
       // Títulos para a coluna
       const titlesList = document.createElement('div');
       titlesList.className = 'sess-titles';
-      (sess.tabs || []).forEach(tab => {
+      (sess.tabs || []).forEach((tab, tabIdx) => {
         let t = tab.title || tab.url || '';
         if(t.length > 55) t = t.substring(0,55)+"...";
         const ti = document.createElement('div');
         ti.className = 'sess-title-item';
         ti.title = tab.title || tab.url || '';
         ti.textContent = t;
+        ti.dataset.tabidx = tabIdx;
+        ti.dataset.sessidx = idx;
         titlesList.appendChild(ti);
       });
       // Nome, info e botões
@@ -93,3 +95,29 @@ document.getElementById('sessionsList').onclick = e => {
 };
 
 document.addEventListener('DOMContentLoaded', renderSessions);
+
+// ---
+// NOVO: clicar nos títulos permite saltar para o separador (se janela certa)
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('sessionsList').addEventListener('click', function(e) {
+    // já tratado acima
+  });
+  document.body.addEventListener('click', function(e) {
+    if (e.target.classList.contains('sess-title-item')) {
+      const sessidx = Number(e.target.dataset.sessidx);
+      const tabidx = Number(e.target.dataset.tabidx);
+      chrome.storage.local.get('sessions', data => {
+        const session = (data.sessions||[])[sessidx];
+        if (!session) return;
+        chrome.windows.getCurrent({populate:true}, win => {
+          if (win.id !== session.windowId) return;
+          const match = win.tabs.find(t => t.url === (session.tabs[tabidx]?.url));
+          if (!match) return;
+          chrome.tabs.update(match.id, {active:true}, ()=>{
+            chrome.windows.update(win.id, {focused:true});
+          });
+        });
+      });
+    }
+  });
+});
