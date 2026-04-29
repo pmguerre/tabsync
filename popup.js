@@ -75,17 +75,11 @@ document.getElementById('sessionsList').onclick = e => {
           }
           return;
         }
-        // Compara separadores (ignorar ordem)
+        // Atualiza sempre separadores da janela atual!
         const tabsNow = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'));
-        const urlsNow = tabsNow.map(t=>t.url).sort();
-        const urlsSess = (sess.tabs||[]).map(t=>t.url).sort();
-        if(urlsNow.length !== urlsSess.length || !urlsNow.every((u,i)=>u===urlsSess[i])){
-          const warn = document.getElementById('warn_'+idx);
-          warn.textContent = ' Os separadores abertos não coincidem com os desta sessão!';
-          setTimeout(()=>warn.textContent='', 4000);
-          return;
-        }
-        // Para já não faz update, só passa validação
+        sess.tabs = tabsNow.map(t=>({url:t.url, title:t.title||''}));
+        sess.timestamp = Date.now();
+        chrome.storage.local.set({sessions}, renderSessions);
       });
     });
   } else if (e.target.dataset.delete) {
