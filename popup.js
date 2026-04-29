@@ -27,10 +27,11 @@ document.getElementById('saveBtn').onclick = async () => {
     return;
   }
   chrome.windows.getCurrent({populate: true}, win => {
-    const urls = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome')).map(t => t.url);
+    const tabs = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'))
+      .map(t => ({url: t.url, title: t.title||''}));
     chrome.storage.local.get('sessions', data => {
       const sessions = data.sessions || [];
-      sessions.push({ name, tabs: urls, timestamp: Date.now() });
+      sessions.push({ name, windowId: win.id, tabs, timestamp: Date.now() });
       chrome.storage.local.set({sessions}, renderSessions);
     });
   });
@@ -42,11 +43,10 @@ document.getElementById('sessionsList').onclick = e => {
     chrome.storage.local.get('sessions', data => {
       const session = (data.sessions || [])[idx];
       if (!session) return;
-      chrome.windows.create({url: session.tabs});
+      chrome.windows.create({url: session.tabs.map(t=>t.url)});
     });
   } else if (e.target.dataset.update) {
-    // Botão Atualizar (sem efeito ainda)
-    // Implementação a fazer nos próximos commits
+    // A ser implementado nos próximos commits
   } else if (e.target.dataset.delete) {
     const idx = Number(e.target.dataset.delete);
     chrome.storage.local.get('sessions', data => {
