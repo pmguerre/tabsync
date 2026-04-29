@@ -20,9 +20,9 @@ function renderSessions() {
       }
       li.innerHTML = `
         <b>${sess.name}</b> <br>
-        <button data-open="${idx}">Restaurar</button>
-        <button data-update="${idx}">Atualizar</button>
-        <button data-delete="${idx}">Remover</button>
+        <button data-open="${idx}" title="Restaurar sessão" aria-label="Restaurar sessão">📄</button>
+        <button data-update="${idx}" title="Atualizar sessão" aria-label="Atualizar sessão">💾</button>
+        <button data-delete="${idx}" title="Remover sessão" aria-label="Remover sessão">🗑️</button>
         <small>(${sess.tabs.length} separadores)</small><br>
         ${titles}
         <span id="warn_${idx}" style="color:#900;font-size:12px;"></span>
