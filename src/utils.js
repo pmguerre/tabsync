@@ -162,6 +162,37 @@ function groupColorStyle(colorName) {
   return map[colorName] || '#9e9e9e';
 }
 
+/**
+ * Agrupa lista de tabs em segmentos ordenados (solo ou grupo).
+ * @param {Array<{groupIdx:number|null}>} tabs
+ * @param {Array<{title,color,collapsed}>} groups
+ * @returns {Array<{type:'solo'|'group', tab?, tabIdx?, group?, tabs?}>}
+ */
+function groupTabsIntoSegments(tabs, groups) {
+  const segments = [];
+  let i = 0;
+  while (i < (tabs||[]).length) {
+    const tab = tabs[i];
+    if (tab.groupIdx === null || tab.groupIdx === undefined) {
+      segments.push({ type: 'solo', tab, tabIdx: i });
+      i++;
+    } else {
+      const groupIdx = tab.groupIdx;
+      const groupTabs = [];
+      while (i < tabs.length && tabs[i].groupIdx === groupIdx) {
+        groupTabs.push({ tab: tabs[i], tabIdx: i });
+        i++;
+      }
+      segments.push({
+        type: 'group',
+        group: groups[groupIdx] || { title: '', color: 'grey', collapsed: false },
+        tabs: groupTabs,
+      });
+    }
+  }
+  return segments;
+}
+
 /* istanbul ignore next */
 if (typeof module !== 'undefined') module.exports = {
   formatDate,
@@ -176,4 +207,5 @@ if (typeof module !== 'undefined') module.exports = {
   buildSessionData,
   buildGroupRestoreOps,
   groupColorStyle,
+  groupTabsIntoSegments,
 };

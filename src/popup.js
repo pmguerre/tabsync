@@ -38,63 +38,65 @@ function renderSessions() {
     // Mostra separadores só da sessão ativa
     if(selectedSessionIdx !== null && sessions[selectedSessionIdx]) {
       const sess = sessions[selectedSessionIdx];
-      let lastGroupIdx = undefined;
-      (sess.tabs||[]).forEach((tab, tabIdx) => {
-        // Cabeçalho de grupo se mudou de grupo
-        if (tab.groupIdx !== null && tab.groupIdx !== lastGroupIdx) {
-          const group = (sess.groups||[])[tab.groupIdx];
-          if (group) {
-            const header = document.createElement('div');
-            header.className = 'group-header';
-            const dot = document.createElement('span');
-            dot.className = 'group-header-dot';
-            dot.style.background = groupColorStyle(group.color);
-            header.appendChild(dot);
-            header.appendChild(document.createTextNode(group.title || 'Grupo sem nome'));
-            tabsTitleList.appendChild(header);
-          }
-        }
-        lastGroupIdx = tab.groupIdx;
+      const segments = groupTabsIntoSegments(sess.tabs || [], sess.groups || []);
 
+      function renderTabEl(tab, tabIdx) {
         const ti = document.createElement('div');
-        ti.className = 'sess-title-item' + (tab.groupIdx !== null ? ' tab-grouped' : '');
+        ti.className = 'sess-title-item';
         ti.title = tabLabel(tab);
         ti.dataset.tabidx = tabIdx;
         ti.dataset.sessidx = selectedSessionIdx;
-
         const faviconWrap = document.createElement('div');
         faviconWrap.className = 'favicon-wrap';
-
         const favicon = document.createElement('img');
         favicon.className = 'tab-favicon';
         favicon.src = `https://www.google.com/s2/favicons?sz=16&domain_url=${encodeURIComponent(tab.url)}`;
         favicon.onerror = () => { favicon.style.visibility = 'hidden'; };
-
         const removeBtn = document.createElement('span');
         removeBtn.className = 'tab-remove';
         removeBtn.textContent = '✕';
         removeBtn.dataset.tabidx = tabIdx;
         removeBtn.dataset.sessidx = selectedSessionIdx;
-
         faviconWrap.appendChild(favicon);
         faviconWrap.appendChild(removeBtn);
-
         const info = document.createElement('div');
         info.className = 'tab-info';
-
-        const title = document.createElement('div');
-        title.className = 'tab-title';
-        title.textContent = truncate(tab.title || 'Sem título', 80);
-
-        const url = document.createElement('div');
-        url.className = 'tab-url';
-        url.textContent = truncate(tab.url || '', 80);
-
-        info.appendChild(title);
-        info.appendChild(url);
+        const titleEl = document.createElement('div');
+        titleEl.className = 'tab-title';
+        titleEl.textContent = truncate(tab.title || 'Sem título', 80);
+        const urlEl = document.createElement('div');
+        urlEl.className = 'tab-url';
+        urlEl.textContent = truncate(tab.url || '', 80);
+        info.appendChild(titleEl);
+        info.appendChild(urlEl);
         ti.appendChild(faviconWrap);
         ti.appendChild(info);
-        tabsTitleList.appendChild(ti);
+        return ti;
+      }
+
+      segments.forEach(segment => {
+        if (segment.type === 'solo') {
+          tabsTitleList.appendChild(renderTabEl(segment.tab, segment.tabIdx));
+        } else {
+          const color = groupColorStyle(segment.group.color);
+          const container = document.createElement('div');
+          container.className = 'group-container';
+          container.style.borderColor = color;
+          const header = document.createElement('div');
+          header.className = 'group-header';
+          const dot = document.createElement('span');
+          dot.className = 'group-header-dot';
+          dot.style.background = color;
+          header.appendChild(dot);
+          header.appendChild(document.createTextNode(segment.group.title || 'Grupo sem nome'));
+          container.appendChild(header);
+          segment.tabs.forEach(({tab, tabIdx}) => {
+            const tabEl = renderTabEl(tab, tabIdx);
+            tabEl.classList.add('tab-grouped');
+            container.appendChild(tabEl);
+          });
+          tabsTitleList.appendChild(container);
+        }
       });
     }
   });
@@ -144,10 +146,17 @@ function handleOpen(idx) {
           session.windowId = newWin.id;
           chrome.storage.sync.set({sessions}, renderSessions);
           if (session.groups && session.groups.length > 0) {
-            const ops = buildGroupRestoreOps(session.groups, session.tabs, newWin.tabs);
+            // Usa posição para associar tabs a grupos (URL pode estar em pendingUrl)
+            const ops = (session.groups || []).map((group, groupIdx) => ({
+              tabIds: session.tabs
+                .map((t, i) => t.groupIdx === groupIdx ? newWin.tabs[i]?.id : null)
+                .filter(Boolean),
+              groupProps: group,
+            })).filter(op => op.tabIds.length > 0);
             ops.forEach(({tabIds, groupProps}) => {
               chrome.tabs.group({tabIds, windowId: newWin.id}, groupId => {
-                chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
+                void chrome.runtime.lastError;
+                if (groupId) chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
               });
             });
           }
@@ -179,10 +188,13 @@ function handleOpen(idx) {
           Promise.all(movePromises).then(() => {
             if (session.groups && session.groups.length > 0) {
               chrome.windows.get(win.id, {populate: true}, reorderedWin => {
-                const ops = buildGroupRestoreOps(session.groups, session.tabs, reorderedWin.tabs);
+                // Normaliza URLs (pendingUrl) para garantir match correto
+                const normalizedTabs = reorderedWin.tabs.map(t => ({...t, url: t.url || t.pendingUrl || ''}));
+                const ops = buildGroupRestoreOps(session.groups, session.tabs, normalizedTabs);
                 ops.forEach(({tabIds, groupProps}) => {
                   chrome.tabs.group({tabIds, windowId: win.id}, groupId => {
-                    chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
+                    void chrome.runtime.lastError;
+                    if (groupId) chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
                   });
                 });
                 chrome.windows.update(win.id, {focused: true});
