@@ -140,10 +140,11 @@ function handleSave() {
   });
 }
 
-function restoreGroups(winId, session, orderedTabIds) {
+function restoreGroups(winId, session, orderedTabIds, activeTabId = null) {
+  const tabToActivate = activeTabId || orderedTabIds[0];
   if (!session.groups || !session.groups.length || !chrome.tabs.group) {
     chrome.windows.update(winId, {focused: true});
-    if (orderedTabIds[0]) chrome.tabs.update(orderedTabIds[0], {active: true});
+    if (tabToActivate) chrome.tabs.update(tabToActivate, {active: true});
     return;
   }
   const groupPromises = session.groups.map((group, groupIdx) =>
@@ -168,7 +169,7 @@ function restoreGroups(winId, session, orderedTabIds) {
   );
   Promise.all(groupPromises).then(() => {
     chrome.windows.update(winId, {focused: true});
-    if (orderedTabIds[0]) chrome.tabs.update(orderedTabIds[0], {active: true});
+    if (tabToActivate) chrome.tabs.update(tabToActivate, {active: true});
   });
 }
 
@@ -293,11 +294,7 @@ function handleTabClick(sessidx, tabidx) {
           session.windowId = newWin.id;
           chrome.storage.sync.set({sessions});
           const newTab = newWin.tabs[tabidx];
-          if (newTab) {
-            chrome.tabs.update(newTab.id, {active: true});
-            chrome.windows.update(newWin.id, {focused: true});
-          }
-          restoreGroups(newWin.id, session, newWin.tabs.map(t => t.id));
+          restoreGroups(newWin.id, session, newWin.tabs.map(t => t.id), newTab?.id || null);
         });
         return;
       }
