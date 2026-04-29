@@ -45,7 +45,8 @@ function buildRestoreDiffMessage(extra, missing) {
   return msg;
 }
 
-module.exports = {
+/* istanbul ignore next */
+if (typeof module !== 'undefined') module.exports = {
   formatDate,
   diffUrls,
   truncate,

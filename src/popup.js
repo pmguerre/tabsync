@@ -2,8 +2,6 @@
 
 let selectedSessionIdx = null;
 
-import { formatDate, truncate, buildRestoreDiffMessage } from './utils.js';
-
 function renderSessions() {
   const sessionsList = document.getElementById('sessionsList');
   const tabsTitleList = document.getElementById('tabsTitleList');
