@@ -11,6 +11,7 @@ function renderSessions() {
       li.innerHTML = `
         <b>${sess.name}</b> <br>
         <button data-open="${idx}">Restaurar</button>
+        <button data-update="${idx}">Atualizar</button>
         <button data-delete="${idx}">Remover</button>
         <small>(${sess.tabs.length} separadores)</small>
       `;
@@ -43,6 +44,9 @@ document.getElementById('sessionsList').onclick = e => {
       if (!session) return;
       chrome.windows.create({url: session.tabs});
     });
+  } else if (e.target.dataset.update) {
+    // Botão Atualizar (sem efeito ainda)
+    // Implementação a fazer nos próximos commits
   } else if (e.target.dataset.delete) {
     const idx = Number(e.target.dataset.delete);
     chrome.storage.local.get('sessions', data => {
