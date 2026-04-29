@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>TabSync</title>
+  <style>
+    body { min-width: 320px; font-family: sans-serif; margin: 12px; }
+    button { margin-top: 6px; }
+    input[type=text] { width: 70%; padding: 4px; }
+    ul { padding-left: 18px; }
+    .sessao { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h3>Guardar sessão</h3>
+  <input type="text" id="sessionName" placeholder="Nome da sessão">
+  <button id="saveBtn">Guardar sessão</button>
+  <hr>
+  <h3>Sessões guardadas</h3>
+  <ul id="sessionsList"></ul>
+  <script src="popup.js"></script>
+</body>
+</html>
