@@ -42,9 +42,29 @@ function renderSessions() {
         const ti = document.createElement('div');
         ti.className = 'sess-title-item';
         ti.title = tabLabel(tab);
-        ti.textContent = truncate(tabLabel(tab), 120);
         ti.dataset.tabidx = tabIdx;
         ti.dataset.sessidx = selectedSessionIdx;
+
+        const favicon = document.createElement('img');
+        favicon.className = 'tab-favicon';
+        favicon.src = `https://www.google.com/s2/favicons?sz=16&domain_url=${encodeURIComponent(tab.url)}`;
+        favicon.onerror = () => { favicon.style.visibility = 'hidden'; };
+
+        const info = document.createElement('div');
+        info.className = 'tab-info';
+
+        const title = document.createElement('div');
+        title.className = 'tab-title';
+        title.textContent = truncate(tab.title || 'Sem título', 80);
+
+        const url = document.createElement('div');
+        url.className = 'tab-url';
+        url.textContent = truncate(tab.url || '', 80);
+
+        info.appendChild(title);
+        info.appendChild(url);
+        ti.appendChild(favicon);
+        ti.appendChild(info);
         tabsTitleList.appendChild(ti);
       });
     }
