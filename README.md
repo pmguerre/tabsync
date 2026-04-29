@@ -1,5 +1,10 @@
 # TabSync
 
+![MIT License](https://img.shields.io/badge/License-MIT-green.svg)
+![Issues](https://img.shields.io/github/issues/pmguerre/tabsync)
+![PRs](https://img.shields.io/github/issues-pr/pmguerre/tabsync)
+![Last Commit](https://img.shields.io/github/last-commit/pmguerre/tabsync)
+
 Extensão Chrome/Edge para sincronizar, guardar e restaurar sessões de separadores por janela, entre dispositivos/autenticações do mesmo perfil.
 
 ## Funcionalidades principais
