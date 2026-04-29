@@ -61,6 +61,18 @@ function renderSessions() {
 
         faviconWrap.appendChild(favicon);
         faviconWrap.appendChild(removeBtn);
+
+        const info = document.createElement('div');
+        info.className = 'tab-info';
+
+        const title = document.createElement('div');
+        title.className = 'tab-title';
+        title.textContent = truncate(tab.title || 'Sem título', 80);
+
+        const url = document.createElement('div');
+        url.className = 'tab-url';
+        url.textContent = truncate(tab.url || '', 80);
+
         info.appendChild(title);
         info.appendChild(url);
         ti.appendChild(faviconWrap);
