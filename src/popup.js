@@ -21,7 +21,6 @@ function renderSessions() {
       li.innerHTML = `
         <div class='sess-info'>
           <div class='sess-main'>${sess.name}</div>
-          <div class="sess-date">Última atualização: ${formatDate(sess.timestamp)}</div>
           <div class="sess-footer">
             <small>${sess.tabs.length} separadores</small>
             <div class="sess-btns">
@@ -30,6 +29,7 @@ function renderSessions() {
               <button data-delete="${idx}" title="Remover sessão" aria-label="Remover sessão">🗑️</button>
             </div>
           </div>
+          <div class="sess-date">Atualizado em: ${formatDate(sess.timestamp)}</div>
         </div>
       `;
       li.onclick = (ev) => {
