@@ -5,7 +5,6 @@ let selectedSessionIdx = null;
 function formatDate(dt) {
   const d = new Date(dt);
   let zero = n => n.toString().padStart(2, '0');
-  // formato DD/MM/YYYY HH:MM
   return zero(d.getDate()) + '/' + zero(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + zero(d.getHours()) + ':' + zero(d.getMinutes());
 }
 
@@ -43,7 +42,7 @@ function renderSessions() {
       };
       sessionsList.appendChild(li);
     });
-    // Mostra separadores só da sessão ativa
+    // Separadores da sessão ativa
     if(selectedSessionIdx !== null && sessions[selectedSessionIdx]) {
       const sess = sessions[selectedSessionIdx];
       let titlesBox = '<div class="sess-titles">';
@@ -75,38 +74,41 @@ document.getElementById('saveBtn').onclick = async () => {
     });
   });
 };
+// DELEGAÇÃO DE EVENTOS
 
 document.getElementById('sessionsList').onclick = e => {
-  if (e.target.dataset.open) {
-    const idx = Number(e.target.dataset.open);
-    chrome.storage.local.get('sessions', data => {
-      const session = (data.sessions || [])[idx];
-      if (!session) return;
-      chrome.windows.create({url: session.tabs.map(t=>t.url)});
-    });
-  } else if (e.target.dataset.update) {
-    const idx = Number(e.target.dataset.update);
-    chrome.storage.local.get('sessions', data => {
-      const sessions = data.sessions || [];
-      const sess = sessions[idx];
-      if (!sess) return;
-      chrome.windows.getCurrent({populate:true}, win => {
-        if (sess.windowId !== win.id) {
-          return;
-        }
-        const tabsNow = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'));
-        sess.tabs = tabsNow.map(t=>({url:t.url, title:t.title||''}));
-        sess.timestamp = Date.now();
+  if (e.target.tagName === 'BUTTON') {
+    if (e.target.dataset.open) {
+      const idx = Number(e.target.dataset.open);
+      chrome.storage.local.get('sessions', data => {
+        const session = (data.sessions || [])[idx];
+        if (!session) return;
+        chrome.windows.create({url: session.tabs.map(t=>t.url)});
+      });
+    } else if (e.target.dataset.update) {
+      const idx = Number(e.target.dataset.update);
+      chrome.storage.local.get('sessions', data => {
+        const sessions = data.sessions || [];
+        const sess = sessions[idx];
+        if (!sess) return;
+        chrome.windows.getCurrent({populate:true}, win => {
+          if (sess.windowId !== win.id) {
+            return;
+          }
+          const tabsNow = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'));
+          sess.tabs = tabsNow.map(t=>({url:t.url, title:t.title||''}));
+          sess.timestamp = Date.now();
+          chrome.storage.local.set({sessions}, renderSessions);
+        });
+      });
+    } else if (e.target.dataset.delete) {
+      const idx = Number(e.target.dataset.delete);
+      chrome.storage.local.get('sessions', data => {
+        let sessions = data.sessions || [];
+        sessions.splice(idx, 1);
         chrome.storage.local.set({sessions}, renderSessions);
       });
-    });
-  } else if (e.target.dataset.delete) {
-    const idx = Number(e.target.dataset.delete);
-    chrome.storage.local.get('sessions', data => {
-      let sessions = data.sessions || [];
-      sessions.splice(idx, 1);
-      chrome.storage.local.set({sessions}, renderSessions);
-    });
+    }
   }
 };
 
