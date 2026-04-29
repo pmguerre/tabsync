@@ -10,6 +10,7 @@ function renderSessions() {
   chrome.storage.sync.get('sessions', data => {
     const sessions = data.sessions || [];
     const hasSessions = sessions.length > 0;
+    document.body.classList.toggle('no-sessions', !hasSessions);
     document.getElementById('mainhr').classList.toggle('hidden', !hasSessions);
     document.getElementById('mainwrap').classList.toggle('hidden', !hasSessions);
     selectedSessionIdx = clampIndex(selectedSessionIdx, sessions.length);
