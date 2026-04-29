@@ -135,6 +135,42 @@ function handleSave() {
   });
 }
 
+function restoreGroups(winId, session, orderedTabIds) {
+  if (!session.groups || !session.groups.length) {
+    chrome.windows.update(winId, {focused: true});
+    if (orderedTabIds[0]) chrome.tabs.update(orderedTabIds[0], {active: true});
+    return;
+  }
+  const groupPromises = session.groups.map((group, groupIdx) =>
+    new Promise(resolve => {
+      const tabIds = session.tabs
+        .map((t, i) => t.groupIdx === groupIdx ? orderedTabIds[i] : null)
+        .filter(Boolean);
+      if (!tabIds.length) { resolve(); return; }
+      chrome.tabs.group({tabIds, windowId: winId}, groupId => {
+        void chrome.runtime.lastError;
+        if (groupId) chrome.tabGroups.update(groupId,
+          {title: group.title, color: group.color, collapsed: group.collapsed}, resolve);
+        else resolve();
+      });
+    })
+  );
+  Promise.all(groupPromises).then(() => {
+    chrome.windows.update(winId, {focused: true});
+    if (orderedTabIds[0]) chrome.tabs.update(orderedTabIds[0], {active: true});
+  });
+}
+
+function openNewWindow(session, sessions) {
+  chrome.windows.create({url: session.tabs.map(t => t.url)}, newWin => {
+    void chrome.runtime.lastError;
+    if (!newWin) return;
+    session.windowId = newWin.id;
+    chrome.storage.sync.set({sessions}, renderSessions);
+    restoreGroups(newWin.id, session, newWin.tabs.map(t => t.id));
+  });
+}
+
 function handleOpen(idx) {
   chrome.storage.sync.get('sessions', data => {
     const sessions = data.sessions || [];
@@ -142,25 +178,7 @@ function handleOpen(idx) {
     if (!session) return;
     chrome.windows.get(session.windowId, {populate: true}, win => {
       if (chrome.runtime.lastError || !win) {
-        chrome.windows.create({url: session.tabs.map(t => t.url)}, newWin => {
-          session.windowId = newWin.id;
-          chrome.storage.sync.set({sessions}, renderSessions);
-          if (session.groups && session.groups.length > 0) {
-            // Usa posição para associar tabs a grupos (URL pode estar em pendingUrl)
-            const ops = (session.groups || []).map((group, groupIdx) => ({
-              tabIds: session.tabs
-                .map((t, i) => t.groupIdx === groupIdx ? newWin.tabs[i]?.id : null)
-                .filter(Boolean),
-              groupProps: group,
-            })).filter(op => op.tabIds.length > 0);
-            ops.forEach(({tabIds, groupProps}) => {
-              chrome.tabs.group({tabIds, windowId: newWin.id}, groupId => {
-                void chrome.runtime.lastError;
-                if (groupId) chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
-              });
-            });
-          }
-        });
+        openNewWindow(session, sessions);
         return;
       }
       const winUrls = extractSessionTabs(win.tabs).map(t => t.url);
@@ -168,43 +186,39 @@ function handleOpen(idx) {
       const { extra, missing } = diffUrls(winUrls, sessUrls);
       if (extra.length === 0 && missing.length === 0 && winUrls.length === sessUrls.length) {
         chrome.windows.update(win.id, {focused: true});
-        if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active: true});
+        if (win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active: true});
         return;
       }
       const msg = buildRestoreDiffMessage(extra, missing);
       if (!confirm(msg)) return;
+      // Remove extra tabs
       const tabsToClose = win.tabs.filter(t => extra.includes(t.url)).map(t => t.id);
       if (tabsToClose.length) chrome.tabs.remove(tabsToClose);
-      const createPromises = missing.map(u =>
-        new Promise(resolve => chrome.tabs.create({windowId: win.id, url: u}, resolve))
+      // Constrói URL→ID para tabs já existentes (exceto as que vão ser removidas)
+      const urlToId = {};
+      win.tabs
+        .filter(t => !t.pinned && t.url && !t.url.startsWith('chrome') && !extra.includes(t.url))
+        .forEach(t => { urlToId[t.url] = t.id; });
+      // Cria tabs em falta e adiciona ao mapa via callback (URL garantida)
+      const createPromises = missing.map(url =>
+        new Promise(resolve => chrome.tabs.create({windowId: win.id, url}, tab => {
+          void chrome.runtime.lastError;
+          if (tab) urlToId[url] = tab.id;
+          resolve();
+        }))
       );
       Promise.all(createPromises).then(() => {
-        chrome.windows.get(win.id, {populate: true}, updatedWin => {
-          const moves = buildTabMoveOrder(sessUrls, updatedWin.tabs);
-          moves.sort((a, b) => a.index - b.index);
-          const movePromises = moves.map(({id, index}) =>
-            new Promise(resolve => chrome.tabs.move(id, {index}, resolve))
+        // orderedTabIds[i] = ID do tab para session.tabs[i]
+        const orderedTabIds = session.tabs.map(t => urlToId[t.url]).filter(Boolean);
+        // Move tabs para posição correta (a seguir aos pinned)
+        chrome.windows.get(win.id, {populate: true}, currentWin => {
+          const pinnedCount = currentWin.tabs.filter(t => t.pinned).length;
+          const movePromises = orderedTabIds.map((id, i) =>
+            new Promise(resolve => chrome.tabs.move(id, {index: pinnedCount + i}, resolve))
           );
-          Promise.all(movePromises).then(() => {
-            if (session.groups && session.groups.length > 0) {
-              chrome.windows.get(win.id, {populate: true}, reorderedWin => {
-                // Normaliza URLs (pendingUrl) para garantir match correto
-                const normalizedTabs = reorderedWin.tabs.map(t => ({...t, url: t.url || t.pendingUrl || ''}));
-                const ops = buildGroupRestoreOps(session.groups, session.tabs, normalizedTabs);
-                ops.forEach(({tabIds, groupProps}) => {
-                  chrome.tabs.group({tabIds, windowId: win.id}, groupId => {
-                    void chrome.runtime.lastError;
-                    if (groupId) chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
-                  });
-                });
-                chrome.windows.update(win.id, {focused: true});
-                if (reorderedWin.tabs[0]) chrome.tabs.update(reorderedWin.tabs[0].id, {active: true});
-              });
-            } else {
-              chrome.windows.update(win.id, {focused: true});
-              if (updatedWin.tabs[0]) chrome.tabs.update(updatedWin.tabs[0].id, {active: true});
-            }
-          });
+          Promise.all(movePromises).then(() =>
+            restoreGroups(win.id, session, orderedTabIds)
+          );
         });
       });
     });
