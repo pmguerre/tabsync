@@ -26,7 +26,7 @@ function truncate(text, max = 120) {
 function extractSessionTabs(tabs) {
   return (tabs||[])
     .filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'))
-    .map(t => ({ url: t.url, title: t.title||'' }));
+    .map(t => ({ url: t.url, title: t.title||'', groupId: t.groupId ?? -1 }));
 }
 
 /**
@@ -94,6 +94,55 @@ function buildTabMoveOrder(sessionUrls, windowTabs) {
     .filter(Boolean);
 }
 
+/**
+ * Constrói o objeto de sessão com grupos a partir dos tabs filtrados e info de grupos.
+ * @param {string} name
+ * @param {number} winId
+ * @param {Array<{url,title,groupId}>} filteredTabs - output de extractSessionTabs
+ * @param {Object} tabGroupsMap - {groupId: {title, color, collapsed}}
+ * @param {number} timestamp
+ * @returns {Object} sessão
+ */
+function buildSessionData(name, winId, filteredTabs, tabGroupsMap, timestamp) {
+  const groupIdxMap = {};
+  const groups = [];
+  filteredTabs.forEach(t => {
+    if (t.groupId !== -1 && !(t.groupId in groupIdxMap)) {
+      groupIdxMap[t.groupId] = groups.length;
+      const g = tabGroupsMap[t.groupId] || {};
+      groups.push({ title: g.title || '', color: g.color || 'grey', collapsed: !!g.collapsed });
+    }
+  });
+  const tabs = filteredTabs.map(t => ({
+    url: t.url,
+    title: t.title,
+    groupIdx: t.groupId !== -1 ? groupIdxMap[t.groupId] : null,
+  }));
+  return { name, windowId: winId, tabs, groups, timestamp };
+}
+
+/**
+ * Calcula operações de agrupamento para restaurar grupos de uma sessão.
+ * @param {Array<{title,color,collapsed}>} sessionGroups
+ * @param {Array<{url,groupIdx}>} sessionTabs
+ * @param {Array<{id,url}>} windowTabs
+ * @returns {Array<{tabIds:number[], groupProps:Object}>}
+ */
+function buildGroupRestoreOps(sessionGroups, sessionTabs, windowTabs) {
+  if (!sessionGroups || sessionGroups.length === 0) return [];
+  const urlToId = {};
+  windowTabs.forEach(t => { urlToId[t.url] = t.id; });
+  return sessionGroups
+    .map((group, groupIdx) => ({
+      tabIds: sessionTabs
+        .filter(t => t.groupIdx === groupIdx)
+        .map(t => urlToId[t.url])
+        .filter(Boolean),
+      groupProps: group,
+    }))
+    .filter(op => op.tabIds.length > 0);
+}
+
 /* istanbul ignore next */
 if (typeof module !== 'undefined') module.exports = {
   formatDate,
@@ -105,4 +154,6 @@ if (typeof module !== 'undefined') module.exports = {
   tabLabel,
   removeSessionTab,
   buildTabMoveOrder,
+  buildSessionData,
+  buildGroupRestoreOps,
 };

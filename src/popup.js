@@ -90,12 +90,20 @@ function handleSave() {
     return;
   }
   chrome.windows.getCurrent({populate: true}, win => {
-    const tabs = extractSessionTabs(win.tabs);
-    chrome.storage.sync.get('sessions', data => {
-      const sessions = data.sessions || [];
-      sessions.push({ name, windowId: win.id, tabs, timestamp: Date.now() });
-      selectedSessionIdx = sessions.length - 1;
-      chrome.storage.sync.set({sessions}, renderSessions);
+    const filteredTabs = extractSessionTabs(win.tabs);
+    const groupIds = [...new Set(filteredTabs.map(t => t.groupId).filter(id => id !== -1))];
+    const fetchGroups = groupIds.map(id =>
+      new Promise(resolve => chrome.tabGroups.get(id, g => resolve([id, g || {}])))
+    );
+    Promise.all(fetchGroups).then(entries => {
+      const tabGroupsMap = Object.fromEntries(entries);
+      chrome.storage.sync.get('sessions', data => {
+        const sessions = data.sessions || [];
+        const session = buildSessionData(name, win.id, filteredTabs, tabGroupsMap, Date.now());
+        sessions.push(session);
+        selectedSessionIdx = sessions.length - 1;
+        chrome.storage.sync.set({sessions}, renderSessions);
+      });
     });
   });
 }
@@ -110,6 +118,14 @@ function handleOpen(idx) {
         chrome.windows.create({url: session.tabs.map(t => t.url)}, newWin => {
           session.windowId = newWin.id;
           chrome.storage.sync.set({sessions}, renderSessions);
+          if (session.groups && session.groups.length > 0) {
+            const ops = buildGroupRestoreOps(session.groups, session.tabs, newWin.tabs);
+            ops.forEach(({tabIds, groupProps}) => {
+              chrome.tabs.group({tabIds, windowId: newWin.id}, groupId => {
+                chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
+              });
+            });
+          }
         });
         return;
       }
@@ -133,8 +149,21 @@ function handleOpen(idx) {
           const moves = buildTabMoveOrder(sessUrls, updatedWin.tabs);
           moves.sort((a, b) => a.index - b.index);
           moves.forEach(({id, index}) => chrome.tabs.move(id, {index}));
-          chrome.windows.update(win.id, {focused: true});
-          if (updatedWin.tabs[0]) chrome.tabs.update(updatedWin.tabs[0].id, {active: true});
+          if (session.groups && session.groups.length > 0) {
+            chrome.windows.get(win.id, {populate: true}, reorderedWin => {
+              const ops = buildGroupRestoreOps(session.groups, session.tabs, reorderedWin.tabs);
+              ops.forEach(({tabIds, groupProps}) => {
+                chrome.tabs.group({tabIds, windowId: win.id}, groupId => {
+                  chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
+                });
+              });
+              chrome.windows.update(win.id, {focused: true});
+              if (reorderedWin.tabs[0]) chrome.tabs.update(reorderedWin.tabs[0].id, {active: true});
+            });
+          } else {
+            chrome.windows.update(win.id, {focused: true});
+            if (updatedWin.tabs[0]) chrome.tabs.update(updatedWin.tabs[0].id, {active: true});
+          }
         });
       });
     });
@@ -157,9 +186,16 @@ function handleUpdate(idx) {
         }
         return;
       }
-      sess.tabs = extractSessionTabs(win.tabs);
-      sess.timestamp = Date.now();
-      chrome.storage.sync.set({sessions}, renderSessions);
+      const filteredTabs = extractSessionTabs(win.tabs);
+      const groupIds = [...new Set(filteredTabs.map(t => t.groupId).filter(id => id !== -1))];
+      const fetchGroups = groupIds.map(id =>
+        new Promise(resolve => chrome.tabGroups.get(id, g => resolve([id, g || {}])))
+      );
+      Promise.all(fetchGroups).then(entries => {
+        const tabGroupsMap = Object.fromEntries(entries);
+        sessions[idx] = buildSessionData(sess.name, win.id, filteredTabs, tabGroupsMap, Date.now());
+        chrome.storage.sync.set({sessions}, renderSessions);
+      });
     });
   });
 }
