@@ -9,11 +9,13 @@
     button:focus { outline: 1px dashed #999; }
     input[type=text] { width: 70%; padding: 4px; }
     ul { padding-left: 18px; }
-    .sessao { display: flex; align-items: flex-start; margin-bottom: 12px; }
-    .sess-info { flex:1; }
+    .sessao { display: flex; align-items: flex-start; margin-bottom: 12px; border-radius: 7px; }
+    .sessao.active { background: #e2f5ff; border: 1.7px solid #53acf7; }
+    .sess-info { flex:1; padding: 5px; cursor:pointer; font-weight: normal; }
+    .sess-main { font-size: 20px; font-weight: bold; margin-bottom: 2px; }
+    .sess-btns { margin:3px 0 6px 0; }
     .sess-titles { max-height: 76px; overflow-y: auto; margin-left: 10px; min-width: 120px; border-left: 1px solid #ccc; padding-left: 8px; background: #f7f7f7; font-size: 15px; }
-    .sess-title-item { margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
-    .sess-main { margin-bottom:3px; }
+    .sess-title-item { margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
     .warn { color:#900; font-size:12px; margin-top:3px; }
   </style>
 </head>
@@ -24,6 +26,7 @@
   <hr>
   <h3>Sessões guardadas</h3>
   <ul id="sessionsList"></ul>
+  <div id="sessionTabs"></div>
   <script src="popup.js"></script>
 </body>
 </html>

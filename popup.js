@@ -1,42 +1,52 @@
 // popup.js
 
+let selectedSessionIdx = null;
+
 function renderSessions() {
   const sessionsList = document.getElementById('sessionsList');
+  const sessionTabs = document.getElementById('sessionTabs');
   sessionsList.innerHTML = '';
+  sessionTabs.innerHTML = '';
   chrome.storage.local.get('sessions', data => {
     const sessions = data.sessions || [];
+    // Seleciona sempre uma sessão válida
+    if(selectedSessionIdx === null && sessions.length>0) selectedSessionIdx = 0;
+    if(selectedSessionIdx !== null && selectedSessionIdx >= sessions.length) selectedSessionIdx = sessions.length-1;
     sessions.forEach((sess, idx) => {
-      // Títulos para a coluna
-      const titlesList = document.createElement('div');
-      titlesList.className = 'sess-titles';
-      (sess.tabs || []).forEach((tab, tabIdx) => {
-        let t = tab.title || tab.url || '';
-        if(t.length > 55) t = t.substring(0,55)+"...";
-        const ti = document.createElement('div');
-        ti.className = 'sess-title-item';
-        ti.title = tab.title || tab.url || '';
-        ti.textContent = t;
-        ti.dataset.tabidx = tabIdx;
-        ti.dataset.sessidx = idx;
-        titlesList.appendChild(ti);
-      });
-      // Nome, info e botões
-      const infoDiv = document.createElement('div');
-      infoDiv.className = 'sess-info';
-      infoDiv.innerHTML = `
-        <div class='sess-main'><b>${sess.name}</b></div>
-        <button data-open="${idx}" title="Restaurar sessão" aria-label="Restaurar sessão">📄</button>
-        <button data-update="${idx}" title="Atualizar sessão" aria-label="Atualizar sessão">💾</button>
-        <button data-delete="${idx}" title="Remover sessão" aria-label="Remover sessão">🗑️</button>
-        <br><small>${sess.tabs.length} separadores</small>
-      `;
-      // Container sessão
+      const isActive = idx === selectedSessionIdx;
       const li = document.createElement('li');
-      li.className = 'sessao';
-      li.appendChild(infoDiv);
-      li.appendChild(titlesList);
+      li.className = 'sessao' + (isActive ? ' active' : '');
+      li.innerHTML = `
+        <div class='sess-info'>
+          <div class='sess-main'>${sess.name}</div>
+          <div class="sess-btns">
+            <button data-open="${idx}" title="Restaurar sessão" aria-label="Restaurar sessão">📄</button>
+            <button data-update="${idx}" title="Atualizar sessão" aria-label="Atualizar sessão">💾</button>
+            <button data-delete="${idx}" title="Remover sessão" aria-label="Remover sessão">🗑️</button>
+          </div>
+          <small>${sess.tabs.length} separadores</small>
+        </div>
+      `;
+      li.onclick = (ev) => {
+        if (!ev.target.closest('button')) {
+          selectedSessionIdx = idx;
+          renderSessions();
+        }
+      };
       sessionsList.appendChild(li);
     });
+    // Mostra separadores só da sessão ativa
+    if(selectedSessionIdx !== null && sessions[selectedSessionIdx]) {
+      const sess = sessions[selectedSessionIdx];
+      let titlesBox = '<div class="sess-titles">';
+      (sess.tabs||[]).forEach((tab, tabIdx) => {
+        let t = tab.title || tab.url || '';
+        if(t.length > 55) t = t.substring(0,55)+"...";
+        titlesBox += `<div class='sess-title-item' data-tabidx='${tabIdx}' data-sessidx='${selectedSessionIdx}' title='${tab.title||tab.url||''}'>${t}</div>`;
+      });
+      titlesBox += '</div>';
+      sessionTabs.innerHTML = titlesBox;
+    }
   });
 }
 
@@ -52,6 +62,7 @@ document.getElementById('saveBtn').onclick = async () => {
     chrome.storage.local.get('sessions', data => {
       const sessions = data.sessions || [];
       sessions.push({ name, windowId: win.id, tabs, timestamp: Date.now() });
+      selectedSessionIdx = sessions.length - 1;
       chrome.storage.local.set({sessions}, renderSessions);
     });
   });
@@ -72,12 +83,10 @@ document.getElementById('sessionsList').onclick = e => {
       const sess = sessions[idx];
       if (!sess) return;
       chrome.windows.getCurrent({populate:true}, win => {
-        // Só permite atualizar se for a mesma janela
         if (sess.windowId !== win.id) {
           // aviso igual
           return;
         }
-        // Atualiza sempre separadores da janela atual!
         const tabsNow = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'));
         sess.tabs = tabsNow.map(t=>({url:t.url, title:t.title||''}));
         sess.timestamp = Date.now();
@@ -94,30 +103,23 @@ document.getElementById('sessionsList').onclick = e => {
   }
 };
 
-document.addEventListener('DOMContentLoaded', renderSessions);
-
-// ---
-// NOVO: clicar nos títulos permite saltar para o separador (se janela certa)
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('sessionsList').addEventListener('click', function(e) {
-    // já tratado acima
-  });
-  document.body.addEventListener('click', function(e) {
-    if (e.target.classList.contains('sess-title-item')) {
-      const sessidx = Number(e.target.dataset.sessidx);
-      const tabidx = Number(e.target.dataset.tabidx);
-      chrome.storage.local.get('sessions', data => {
-        const session = (data.sessions||[])[sessidx];
-        if (!session) return;
-        chrome.windows.getCurrent({populate:true}, win => {
-          if (win.id !== session.windowId) return;
-          const match = win.tabs.find(t => t.url === (session.tabs[tabidx]?.url));
-          if (!match) return;
-          chrome.tabs.update(match.id, {active:true}, ()=>{
-            chrome.windows.update(win.id, {focused:true});
-          });
+document.getElementById('sessionTabs').onclick = e => {
+  if (e.target.classList.contains('sess-title-item')) {
+    const sessidx = Number(e.target.dataset.sessidx);
+    const tabidx = Number(e.target.dataset.tabidx);
+    chrome.storage.local.get('sessions', data => {
+      const session = (data.sessions||[])[sessidx];
+      if (!session) return;
+      chrome.windows.getCurrent({populate:true}, win => {
+        if (win.id !== session.windowId) return;
+        const match = win.tabs.find(t => t.url === (session.tabs[tabidx]?.url));
+        if (!match) return;
+        chrome.tabs.update(match.id, {active:true}, ()=>{
+          chrome.windows.update(win.id, {focused:true});
         });
       });
-    }
-  });
-});
+    });
+  }
+};
+
+document.addEventListener('DOMContentLoaded', renderSessions);
