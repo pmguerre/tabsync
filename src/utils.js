@@ -35,8 +35,21 @@ function truncate(text, max = 120) {
   return text.length > max ? text.substring(0, max) + '...' : text;
 }
 
+/**
+ * Recebe uma lista de separadores e extrai apenas os válidos para sessão
+ * (não pinned e com url válida não-chrome)
+ * @param {Array<{pinned:boolean, url:string, title?:string}>} tabs
+ * @returns {Array<{url:string, title:string}>}
+ */
+function extractSessionTabs(tabs) {
+  return (tabs||[])
+    .filter(t => !t.pinned && t.url && !t.url.startsWith('chrome'))
+    .map(t => ({ url: t.url, title: t.title||'' }));
+}
+
 module.exports = {
   formatDate,
   diffUrls,
   truncate,
+  extractSessionTabs,
 };
