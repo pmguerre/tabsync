@@ -4,11 +4,17 @@
   <meta charset="UTF-8">
   <title>TabSync</title>
   <style>
-    body { min-width: 320px; font-family: sans-serif; margin: 12px; }
-    button { margin-top: 6px; }
+    body { min-width: 480px; min-height: 460px; font-family: sans-serif; margin: 12px; }
+    button { margin-top: 6px; cursor:pointer; border:none; background:none; font-size:18px; padding:3px 6px; }
+    button:focus { outline: 1px dashed #999; }
     input[type=text] { width: 70%; padding: 4px; }
     ul { padding-left: 18px; }
-    .sessao { margin-bottom: 10px; }
+    .sessao { display: flex; align-items: flex-start; margin-bottom: 12px; }
+    .sess-info { flex:1; }
+    .sess-titles { max-height: 76px; overflow-y: auto; margin-left: 10px; min-width: 120px; border-left: 1px solid #ccc; padding-left: 8px; background: #f7f7f7; font-size: 15px; }
+    .sess-title-item { margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+    .sess-main { margin-bottom:3px; }
+    .warn { color:#900; font-size:12px; margin-top:3px; }
   </style>
 </head>
 <body>
