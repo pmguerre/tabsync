@@ -38,9 +38,26 @@ function renderSessions() {
     // Mostra separadores só da sessão ativa
     if(selectedSessionIdx !== null && sessions[selectedSessionIdx]) {
       const sess = sessions[selectedSessionIdx];
+      let lastGroupIdx = undefined;
       (sess.tabs||[]).forEach((tab, tabIdx) => {
+        // Cabeçalho de grupo se mudou de grupo
+        if (tab.groupIdx !== null && tab.groupIdx !== lastGroupIdx) {
+          const group = (sess.groups||[])[tab.groupIdx];
+          if (group) {
+            const header = document.createElement('div');
+            header.className = 'group-header';
+            const dot = document.createElement('span');
+            dot.className = 'group-header-dot';
+            dot.style.background = groupColorStyle(group.color);
+            header.appendChild(dot);
+            header.appendChild(document.createTextNode(group.title || 'Grupo sem nome'));
+            tabsTitleList.appendChild(header);
+          }
+        }
+        lastGroupIdx = tab.groupIdx;
+
         const ti = document.createElement('div');
-        ti.className = 'sess-title-item';
+        ti.className = 'sess-title-item' + (tab.groupIdx !== null ? ' tab-grouped' : '');
         ti.title = tabLabel(tab);
         ti.dataset.tabidx = tabIdx;
         ti.dataset.sessidx = selectedSessionIdx;
@@ -156,22 +173,26 @@ function handleOpen(idx) {
         chrome.windows.get(win.id, {populate: true}, updatedWin => {
           const moves = buildTabMoveOrder(sessUrls, updatedWin.tabs);
           moves.sort((a, b) => a.index - b.index);
-          moves.forEach(({id, index}) => chrome.tabs.move(id, {index}));
-          if (session.groups && session.groups.length > 0) {
-            chrome.windows.get(win.id, {populate: true}, reorderedWin => {
-              const ops = buildGroupRestoreOps(session.groups, session.tabs, reorderedWin.tabs);
-              ops.forEach(({tabIds, groupProps}) => {
-                chrome.tabs.group({tabIds, windowId: win.id}, groupId => {
-                  chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
+          const movePromises = moves.map(({id, index}) =>
+            new Promise(resolve => chrome.tabs.move(id, {index}, resolve))
+          );
+          Promise.all(movePromises).then(() => {
+            if (session.groups && session.groups.length > 0) {
+              chrome.windows.get(win.id, {populate: true}, reorderedWin => {
+                const ops = buildGroupRestoreOps(session.groups, session.tabs, reorderedWin.tabs);
+                ops.forEach(({tabIds, groupProps}) => {
+                  chrome.tabs.group({tabIds, windowId: win.id}, groupId => {
+                    chrome.tabGroups.update(groupId, {title: groupProps.title, color: groupProps.color, collapsed: groupProps.collapsed});
+                  });
                 });
+                chrome.windows.update(win.id, {focused: true});
+                if (reorderedWin.tabs[0]) chrome.tabs.update(reorderedWin.tabs[0].id, {active: true});
               });
+            } else {
               chrome.windows.update(win.id, {focused: true});
-              if (reorderedWin.tabs[0]) chrome.tabs.update(reorderedWin.tabs[0].id, {active: true});
-            });
-          } else {
-            chrome.windows.update(win.id, {focused: true});
-            if (updatedWin.tabs[0]) chrome.tabs.update(updatedWin.tabs[0].id, {active: true});
-          }
+              if (updatedWin.tabs[0]) chrome.tabs.update(updatedWin.tabs[0].id, {active: true});
+            }
+          });
         });
       });
     });

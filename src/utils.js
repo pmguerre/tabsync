@@ -143,6 +143,25 @@ function buildGroupRestoreOps(sessionGroups, sessionTabs, windowTabs) {
     .filter(op => op.tabIds.length > 0);
 }
 
+/**
+ * Converte o nome de cor de um tab group Chrome para CSS.
+ * @param {string} colorName
+ * @returns {string}
+ */
+function groupColorStyle(colorName) {
+  const map = {
+    grey:   '#9e9e9e',
+    blue:   '#4a90d9',
+    red:    '#e53935',
+    yellow: '#f9a825',
+    green:  '#43a047',
+    pink:   '#e91e8c',
+    purple: '#7b1fa2',
+    cyan:   '#00acc1',
+  };
+  return map[colorName] || '#9e9e9e';
+}
+
 /* istanbul ignore next */
 if (typeof module !== 'undefined') module.exports = {
   formatDate,
@@ -156,4 +175,5 @@ if (typeof module !== 'undefined') module.exports = {
   buildTabMoveOrder,
   buildSessionData,
   buildGroupRestoreOps,
+  groupColorStyle,
 };
