@@ -43,6 +43,7 @@
     button:focus { outline: 1px dashed #999; }
     #saveBtn { margin-top: 0; font-size: 16px; padding: 5px 14px; border: 1px solid #53acf7; border-radius: 4px; background: #e2f5ff; cursor: pointer; }
     #saveBtn:hover { background: #b8d4dd; }
+    .hidden { display: none !important; }
     .sessions-list { list-style: none; padding-left: 0; margin: 0; }
     .sessao { padding: 7px 4px 8px 4px; margin-bottom: 9px; border-radius: 6px; transition: background 0.18s; cursor: pointer; }
     .sessao.active { background: #e2f5ff; border: 1.7px solid #53acf7; }
@@ -62,8 +63,8 @@
     <input type="text" id="sessionName" placeholder="Nome da sessão">
     <button id="saveBtn">Guardar</button>
   </div>
-  <hr>
-  <div class="mainwrap">
+  <hr id="mainhr">
+  <div id="mainwrap" class="mainwrap">
     <div class="sessions-col">
       <ul class="sessions-list" id="sessionsList"></ul>
     </div>
