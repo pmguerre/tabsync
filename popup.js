@@ -81,9 +81,53 @@ document.getElementById('sessionsList').onclick = e => {
     if (e.target.dataset.open) {
       const idx = Number(e.target.dataset.open);
       chrome.storage.local.get('sessions', data => {
-        const session = (data.sessions || [])[idx];
+        const sessions = data.sessions || [];
+        const session = sessions[idx];
         if (!session) return;
-        chrome.windows.create({url: session.tabs.map(t=>t.url)});
+        // Verifica se o windowId ainda existe
+        chrome.windows.get(session.windowId, {populate: true}, win => {
+          if (chrome.runtime.lastError || !win) {
+            // Não existe janela -> abrir nova
+            chrome.windows.create({url: session.tabs.map(t=>t.url)}, newWin => {
+              // Atualiza windowId na sessão
+              session.windowId = newWin.id;
+              chrome.storage.local.set({sessions}, renderSessions);
+            });
+            return;
+          }
+          // Janela existe: comparar separadores
+          const winUrls = win.tabs.filter(t => !t.pinned && t.url && !t.url.startsWith('chrome')).map(t=>t.url);
+          const sessUrls = session.tabs.map(t=>t.url);
+          const diffExtra = winUrls.filter(u => !sessUrls.includes(u)); // a mais
+          const diffMissing = sessUrls.filter(u => !winUrls.includes(u)); // em falta
+          if(diffExtra.length === 0 && diffMissing.length === 0 && winUrls.length === sessUrls.length){
+            // São iguais: só focar
+            chrome.windows.update(win.id, {focused:true});
+            if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active:true});
+            return;
+          }
+          // AVISO: mostrar separadores a fechar
+          let msg = '';
+          if(diffExtra.length>0){
+            msg += 'Os seguintes separadores vão ser FECHADOS nesta janela:\n\n'+diffExtra.join('\n')+'\n\n';
+          }
+          if(diffMissing.length>0){
+            msg += 'Os seguintes separadores vão ser ABERTOS (faltam nesta janela):\n\n'+diffMissing.join('\n')+'\n\n';
+          }
+          msg += 'Queres mesmo restaurar esta sessão nesta janela?';
+          if(!confirm(msg)) return;
+          // Fechar separadores extra
+          const tabsToClose = win.tabs.filter(t => diffExtra.includes(t.url)).map(t=>t.id);
+          if(tabsToClose.length)
+            chrome.tabs.remove(tabsToClose);
+          // Abrir em falta
+          for(let u of diffMissing){
+             chrome.tabs.create({windowId:win.id, url: u});
+          }
+          // Focus janela
+          chrome.windows.update(win.id, {focused:true});
+          if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active:true});
+        });
       });
     } else if (e.target.dataset.update) {
       const idx = Number(e.target.dataset.update);
