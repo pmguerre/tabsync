@@ -278,15 +278,36 @@ function handleRemoveTab(sessidx, tabidx) {
 
 function handleTabClick(sessidx, tabidx) {
   chrome.storage.sync.get('sessions', data => {
-    const session = (data.sessions||[])[sessidx];
+    const sessions = data.sessions || [];
+    const session = sessions[sessidx];
     if (!session) return;
-    chrome.windows.getCurrent({populate: true}, win => {
-      if (win.id !== session.windowId) return;
-      const match = win.tabs.find(t => t.url === (session.tabs[tabidx]?.url));
-      if (!match) return;
-      chrome.tabs.update(match.id, {active: true}, () => {
-        chrome.windows.update(win.id, {focused: true});
-      });
+    const tabUrl = session.tabs[tabidx]?.url;
+    if (!tabUrl) return;
+
+    chrome.windows.get(session.windowId, {populate: true}, win => {
+      if (chrome.runtime.lastError || !win) {
+        // Window not open — open session and focus the clicked tab
+        chrome.windows.create({url: session.tabs.map(t => t.url)}, newWin => {
+          void chrome.runtime.lastError;
+          if (!newWin) return;
+          session.windowId = newWin.id;
+          chrome.storage.sync.set({sessions});
+          const newTab = newWin.tabs[tabidx];
+          if (newTab) {
+            chrome.tabs.update(newTab.id, {active: true});
+            chrome.windows.update(newWin.id, {focused: true});
+          }
+          restoreGroups(newWin.id, session, newWin.tabs.map(t => t.id));
+        });
+        return;
+      }
+      // Window exists — find and activate the tab
+      const match = win.tabs.find(t => (t.url || t.pendingUrl) === tabUrl);
+      if (match) {
+        chrome.tabs.update(match.id, {active: true}, () => {
+          chrome.windows.update(win.id, {focused: true});
+        });
+      }
     });
   });
 }
