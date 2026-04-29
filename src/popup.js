@@ -136,7 +136,7 @@ function handleSave() {
 }
 
 function restoreGroups(winId, session, orderedTabIds) {
-  if (!session.groups || !session.groups.length) {
+  if (!session.groups || !session.groups.length || !chrome.tabs.group) {
     chrome.windows.update(winId, {focused: true});
     if (orderedTabIds[0]) chrome.tabs.update(orderedTabIds[0], {active: true});
     return;
@@ -147,12 +147,18 @@ function restoreGroups(winId, session, orderedTabIds) {
         .map((t, i) => t.groupIdx === groupIdx ? orderedTabIds[i] : null)
         .filter(Boolean);
       if (!tabIds.length) { resolve(); return; }
-      chrome.tabs.group({tabIds, windowId: winId}, groupId => {
-        void chrome.runtime.lastError;
-        if (groupId) chrome.tabGroups.update(groupId,
-          {title: group.title, color: group.color, collapsed: group.collapsed}, resolve);
-        else resolve();
-      });
+      chrome.tabs.group(
+        {tabIds, createProperties: {windowId: winId}},
+        groupId => {
+          void chrome.runtime.lastError;
+          if (!groupId || !chrome.tabGroups) { resolve(); return; }
+          chrome.tabGroups.update(
+            groupId,
+            {title: group.title, color: group.color, collapsed: group.collapsed},
+            () => { void chrome.runtime.lastError; resolve(); }
+          );
+        }
+      );
     })
   );
   Promise.all(groupPromises).then(() => {
