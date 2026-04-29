@@ -2,7 +2,7 @@
 
 let selectedSessionIdx = null;
 
-import { formatDate, truncate } from './utils.js';
+import { formatDate, truncate, buildRestoreDiffMessage } from './utils.js';
 
 function renderSessions() {
   const sessionsList = document.getElementById('sessionsList');
@@ -99,14 +99,7 @@ document.getElementById('sessionsList').onclick = e => {
             if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active:true});
             return;
           }
-          let msg = '';
-          if(diffExtra.length>0){
-            msg += 'Os seguintes separadores vão ser FECHADOS nesta janela:\n\n'+diffExtra.join('\n')+'\n\n';
-          }
-          if(diffMissing.length>0){
-            msg += 'Os seguintes separadores vão ser ABERTOS (faltam nesta janela):\n\n'+diffMissing.join('\n')+'\n\n';
-          }
-          msg += 'Queres mesmo restaurar esta sessão nesta janela?';
+          const msg = buildRestoreDiffMessage(diffExtra, diffMissing);
           if(!confirm(msg)) return;
           const tabsToClose = win.tabs.filter(t => diffExtra.includes(t.url)).map(t=>t.id);
           if(tabsToClose.length)
