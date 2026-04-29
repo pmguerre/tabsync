@@ -45,6 +45,27 @@ function buildRestoreDiffMessage(extra, missing) {
   return msg;
 }
 
+/**
+ * Ajusta o índice de sessão selecionado para os limites válidos do array.
+ * @param {number|null} idx
+ * @param {number} length
+ * @returns {number|null}
+ */
+function clampIndex(idx, length) {
+  if (idx === null && length > 0) return 0;
+  if (idx !== null && idx >= length) return length - 1;
+  return idx;
+}
+
+/**
+ * Devolve o label legível de um separador (título ou url ou string vazia).
+ * @param {{title?:string, url?:string}} tab
+ * @returns {string}
+ */
+function tabLabel(tab) {
+  return tab.title || tab.url || '';
+}
+
 /* istanbul ignore next */
 if (typeof module !== 'undefined') module.exports = {
   formatDate,
@@ -52,4 +73,6 @@ if (typeof module !== 'undefined') module.exports = {
   truncate,
   extractSessionTabs,
   buildRestoreDiffMessage,
+  clampIndex,
+  tabLabel,
 };

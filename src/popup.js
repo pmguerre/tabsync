@@ -9,8 +9,7 @@ function renderSessions() {
   tabsTitleList.innerHTML = '';
   chrome.storage.sync.get('sessions', data => {
     const sessions = data.sessions || [];
-    if(selectedSessionIdx === null && sessions.length>0) selectedSessionIdx = 0;
-    if(selectedSessionIdx !== null && selectedSessionIdx >= sessions.length) selectedSessionIdx = sessions.length-1;
+    selectedSessionIdx = clampIndex(selectedSessionIdx, sessions.length);
     sessions.forEach((sess, idx) => {
       const isActive = idx === selectedSessionIdx;
       const li = document.createElement('li');
@@ -42,8 +41,8 @@ function renderSessions() {
       (sess.tabs||[]).forEach((tab, tabIdx) => {
         const ti = document.createElement('div');
         ti.className = 'sess-title-item';
-        ti.title = tab.title || tab.url || '';
-        ti.textContent = truncate(tab.title || tab.url || '', 120);
+        ti.title = tabLabel(tab);
+        ti.textContent = truncate(tabLabel(tab), 120);
         ti.dataset.tabidx = tabIdx;
         ti.dataset.sessidx = selectedSessionIdx;
         tabsTitleList.appendChild(ti);
