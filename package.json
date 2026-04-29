@@ -1,0 +1,10 @@
+{
+  "name": "tabsync",
+  "version": "1.0.0",
+  "description": "Extensão Chrome/Edge para sincronização e gestão de sessões de separadores.",
+  "scripts": {
+    "build": "rm -rf dist && mkdir dist && cp -r src/* dist/"
+  },
+  "author": "Pedro Guerreiro",
+  "license": "MIT"
+}
