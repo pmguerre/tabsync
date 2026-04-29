@@ -80,6 +80,20 @@ function removeSessionTab(sessions, sessIdx, tabIdx) {
   });
 }
 
+/**
+ * Calcula as operações de mover separadores para corresponder à ordem da sessão.
+ * @param {string[]} sessionUrls - URLs na ordem desejada
+ * @param {Array<{id:number, url:string}>} windowTabs - separadores atuais da janela
+ * @returns {Array<{id:number, index:number}>}
+ */
+function buildTabMoveOrder(sessionUrls, windowTabs) {
+  const urlToId = {};
+  windowTabs.forEach(t => { urlToId[t.url] = t.id; });
+  return sessionUrls
+    .map((url, idx) => urlToId[url] ? { id: urlToId[url], index: idx } : null)
+    .filter(Boolean);
+}
+
 /* istanbul ignore next */
 if (typeof module !== 'undefined') module.exports = {
   formatDate,
@@ -90,4 +104,5 @@ if (typeof module !== 'undefined') module.exports = {
   clampIndex,
   tabLabel,
   removeSessionTab,
+  buildTabMoveOrder,
 };

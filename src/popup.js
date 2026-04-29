@@ -125,9 +125,18 @@ function handleOpen(idx) {
       if (!confirm(msg)) return;
       const tabsToClose = win.tabs.filter(t => extra.includes(t.url)).map(t => t.id);
       if (tabsToClose.length) chrome.tabs.remove(tabsToClose);
-      for (let u of missing) chrome.tabs.create({windowId: win.id, url: u});
-      chrome.windows.update(win.id, {focused: true});
-      if (win.tabs && win.tabs[0]) chrome.tabs.update(win.tabs[0].id, {active: true});
+      const createPromises = missing.map(u =>
+        new Promise(resolve => chrome.tabs.create({windowId: win.id, url: u}, resolve))
+      );
+      Promise.all(createPromises).then(() => {
+        chrome.windows.get(win.id, {populate: true}, updatedWin => {
+          const moves = buildTabMoveOrder(sessUrls, updatedWin.tabs);
+          moves.sort((a, b) => a.index - b.index);
+          moves.forEach(({id, index}) => chrome.tabs.move(id, {index}));
+          chrome.windows.update(win.id, {focused: true});
+          if (updatedWin.tabs[0]) chrome.tabs.update(updatedWin.tabs[0].id, {active: true});
+        });
+      });
     });
   });
 }
